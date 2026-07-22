@@ -1091,6 +1091,7 @@
             <div class="login-sub">请填写信息后进入</div>
             <input type="text" id="inputName" placeholder="请输入姓名（必填）" autocomplete="off" />
             <input type="text" id="inputId" placeholder="请输入学号（必填）" autocomplete="off" />
+            <input type="text" id="inputClass" placeholder="请输入班级（必填）" autocomplete="off" />
             <button class="login-btn" onclick="doLogin()">进入知识图谱</button>
             <div class="login-err" id="loginErr"></div>
         </div>
@@ -1478,7 +1479,7 @@
             ["火烧裳尾", "恐", "实词", "kǒng", "动词，担心、害怕", "1.担心，害怕，畏惧：～惧。～怖。～慌。惊～。有恃无～。2.恫吓：～吓（hè）。3.副词，恐怕（表推测）：～怕。～不能成功。",
                 "", "欲言之，恐君性急", "", "本义为害怕，后引申出副词用法表推测。", "", false, "稳定", ""
             ],
-            ["火烧裳尾", "是", "实词", "shì", "形容词（对、正确）", "是-01 形容词，对、正确：一无是处、自以为是非、实事求是", "",
+            ["火烧裳尾", "是", "实词", "shì", "形容词：对的、正确的", "是-01 形容词，对、正确：一无是处、自以为是非、实事求是", "",
                 "然则言之是耶", "", "本义为正确，后引申出判断动词用法，成为现代汉语核心义项，词义范围扩大", "", false, "稳定", ""
             ],
             ["火烧裳尾", "是", "虚词", "shì", "代词，这样、如此", "代词，这样、如此：是日天气晴朗、如是", "", "其人曰：\"我言君性急，果是。\"",
@@ -1714,7 +1715,7 @@
             ["爱莲说", "宜", "虚词", "yí", "副词，应当", "1.适合，适当：～人。～于。合～。权～。适～。相～。2.应该，应当：事不～迟。",
                 "", "宜乎众矣", "", "古义多作副词表理应如此，现代以形容词用法为主", "", false, "频率下降", ""
             ],
-            ["爱莲说", "者", "虚词", "zhě", "代词，指代……的人/事物（……的花）", "现代汉语多用“……的”，极少单用“者”：读者、作者",
+            ["爱莲说", "者", "凝固词组", "zhě", "代词，指代……的人/事物（……的花）", "现代汉语多用“……的”，极少单用“者”：读者、作者",
                 "", "可爱者甚蕃 / 花之隐逸者也 / 花之富贵者也 / 花之君子者也 / 同予者何人", "", "“者”指代“……的人/事物”，现代多用“……的”，极少单用“者”。",
                 "【拓展】……者……也\n古汉语标准判断句式，“者”表停顿，“也”表判断。→ 与第7课《马说》判断句关联\n1.\u3000陈胜者，阳城人也。\n译：陈胜是阳城人。\n2.\u3000廉颇者，赵之良将也。\n译：廉颇是赵国的优秀将领。", false, "频率下降", ""
             ],
@@ -2702,6 +2703,7 @@
 
         function getSenseKey(wenZhongYi) {
             const s = wenZhongYi.trim();
+            if (/形容词：对的、正确的/.test(s)) return '形容词：对的、正确的';
             if (/假设让步/.test(s) && /虽/.test(s)) return '假设让步，\u201c即使……，一定……\u201d';
             if (/事实让步|基于事实/.test(s) && /虽/.test(s)) return '事实让步，\u201c虽然......必定......\u201d';
             if (/表承接|然后|就/.test(s) && /连词/.test(s)) return '连词，表承接（然后、就）';
@@ -3045,6 +3047,7 @@
         // ============================================================
         const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSfGWFtXz-BE2samgDGGsfPJDlTpTYTqq5_7tBHIHhrSt_-rTQ/formResponse';
         const ENTRY = {
+            classname:  'entry.370994464',
             name:       'entry.77813536',
             id:         'entry.1610269156',
             duration:   'entry.1934524694',
@@ -3059,6 +3062,7 @@
         // 用户信息
         let _userName = '';
         let _userId = '';
+        let _userClass = '';
         let _sessionStart = null;
 
         // 行为数据
@@ -3070,8 +3074,9 @@
 
         // 登录
         function doLogin() {
-            const name = document.getElementById('inputName').value.trim();
-            const sid  = document.getElementById('inputId').value.trim();
+            const name  = document.getElementById('inputName').value.trim();
+            const sid   = document.getElementById('inputId').value.trim();
+            const cls   = document.getElementById('inputClass').value.trim();
             if (!name) {
                 document.getElementById('loginErr').textContent = '请输入姓名';
                 return;
@@ -3080,12 +3085,17 @@
                 document.getElementById('loginErr').textContent = '请输入学号';
                 return;
             }
-            _userName = name;
-            _userId   = sid;
+            if (!cls) {
+                document.getElementById('loginErr').textContent = '请输入班级';
+                return;
+            }
+            _userName  = name;
+            _userId    = sid;
+            _userClass = cls;
             _sessionStart = Date.now();
             document.getElementById('loginOverlay').style.display = 'none';
             const tag = document.getElementById('userTag');
-            tag.textContent = '👤 ' + name;
+            tag.textContent = '👤 ' + name + '｜' + cls;
             tag.style.display = 'inline-block';
             document.getElementById('endBtn').style.display = 'inline-block';
         }
@@ -3125,26 +3135,47 @@
 
         // 提交数据到 Google 表单
         // 构建提交参数
+        // 统计频次并排序，返回 "词×N、词×N" 格式
+        function calcFreq(arr, keyFn, top) {
+            const map = {};
+            arr.forEach(function(item) {
+                const k = keyFn(item);
+                map[k] = (map[k] || 0) + 1;
+            });
+            return Object.keys(map)
+                .sort(function(a,b){ return map[b]-map[a]; })
+                .slice(0, top)
+                .map(function(k){ return k + '×' + map[k]; })
+                .join('、') || '无';
+        }
+
         function buildParams() {
             const durationMin = Math.max(1, Math.round((Date.now() - _sessionStart) / 60000));
             const now = new Date();
-            const timeStr = now.getFullYear() + '-'
+            // 只保留日期
+            const dateStr = now.getFullYear() + '-'
                 + String(now.getMonth()+1).padStart(2,'0') + '-'
-                + String(now.getDate()).padStart(2,'0') + ' '
-                + String(now.getHours()).padStart(2,'0') + ':'
-                + String(now.getMinutes()).padStart(2,'0');
-            let detailStr = _clickDetail.slice(0, 60).join(' → ');
-            if (_clickDetail.length > 60) detailStr += '…(共' + _clickDetail.length + '次)';
+                + String(now.getDate()).padStart(2,'0');
+            // 高频知识点：从 "label(lesson)" 中取label部分，取前15个高频
+            const nodeFreq = calcFreq(_clickDetail, function(s){
+                return s.replace(/\(.*\)$/, '').trim();
+            }, 15);
+            // 学习篇目：从 "label(lesson)" 中取lesson部分，取前11个高频
+            const lessonFreq = calcFreq(_clickDetail, function(s){
+                const m = s.match(/\((.+)\)$/);
+                return m ? m[1] : '未知';
+            }, 11);
             const params = new URLSearchParams();
+            params.append(ENTRY.classname,   _userClass);
             params.append(ENTRY.name,        _userName);
             params.append(ENTRY.id,          _userId);
             params.append(ENTRY.duration,    durationMin + '分钟');
             params.append(ENTRY.clickTotal,  _clickTotal);
-            params.append(ENTRY.clickDetail, detailStr || '无');
+            params.append(ENTRY.clickDetail, nodeFreq);
             params.append(ENTRY.crossCount,  _crossCount);
             params.append(ENTRY.searchCount, _searchCount);
-            params.append(ENTRY.lessons,     [..._lessonsUsed].join('、') || '无');
-            params.append(ENTRY.submitTime,  timeStr);
+            params.append(ENTRY.lessons,     lessonFreq);
+            params.append(ENTRY.submitTime,  dateStr);
             return params;
         }
 
@@ -3199,7 +3230,7 @@
             if (!_sessionStart || !_userName) return;
             const durationMin = Math.max(1, Math.round((Date.now() - _sessionStart) / 60000));
             document.getElementById('endInfo').textContent =
-                '👤 ' + _userName + '　|　⏱️ 本次学习 ' + durationMin + ' 分钟　|　📌 点击 ' + _clickTotal + ' 个知识点';
+                '👤 ' + _userName + '　' + _userClass + '　|　⏱️ 本次学习 ' + durationMin + ' 分钟　|　📌 点击 ' + _clickTotal + ' 个知识点';
             document.getElementById('endOverlay').classList.add('open');
             document.getElementById('endDone').style.display = 'none';
             document.getElementById('endSubmitBtn').style.display = 'block';
