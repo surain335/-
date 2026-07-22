@@ -837,6 +837,71 @@
             background: #e2e8f0;
         }
 
+
+        /* ===== 结束学习按钮 ===== */
+        #endBtn {
+            border: none;
+            background: #16a34a;
+            color: #ffffff;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            display: none;
+        }
+        #endBtn:hover { background: #15803d; }
+
+        /* ===== 结束确认弹窗 ===== */
+        #endOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.55);
+            backdrop-filter: blur(4px);
+            z-index: 9998;
+            justify-content: center;
+            align-items: center;
+        }
+        #endOverlay.open { display: flex; }
+        #endBox {
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px 28px 22px;
+            width: 320px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+            text-align: center;
+        }
+        #endBox .end-icon { font-size: 36px; margin-bottom: 8px; }
+        #endBox .end-title {
+            font-size: 16px; font-weight: 800;
+            color: #0f172a; margin-bottom: 6px;
+        }
+        #endBox .end-info {
+            font-size: 12px; color: #64748b;
+            margin-bottom: 20px; line-height: 1.6;
+        }
+        #endBox .end-submit-btn {
+            width: 100%; background: #16a34a; color: #fff;
+            border: none; border-radius: 10px; padding: 11px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            font-family: inherit; transition: 0.2s; margin-bottom: 8px;
+        }
+        #endBox .end-submit-btn:hover { background: #15803d; }
+        #endBox .end-cancel-btn {
+            width: 100%; background: #f1f5f9; color: #475569;
+            border: none; border-radius: 10px; padding: 9px;
+            font-size: 13px; cursor: pointer;
+            font-family: inherit; transition: 0.2s;
+        }
+        #endBox .end-cancel-btn:hover { background: #e2e8f0; }
+        #endBox .end-done {
+            display: none;
+            font-size: 13px; color: #16a34a; margin-top: 10px; font-weight: 600;
+        }
+
         /* ===== 登录弹窗样式 ===== */
         #loginOverlay {
             position: fixed;
@@ -1007,6 +1072,18 @@
 <body>
 
     <!-- ===== 顶部栏 ===== -->
+    <!-- ===== 结束学习确认弹窗 ===== -->
+    <div id="endOverlay">
+        <div id="endBox">
+            <div class="end-icon">📊</div>
+            <div class="end-title">结束学习</div>
+            <div class="end-info" id="endInfo">点击提交后，本次学习记录将保存。</div>
+            <button class="end-submit-btn" id="endSubmitBtn" onclick="doEndSubmit()">✅ 提交学习记录并离开</button>
+            <button class="end-cancel-btn" onclick="closeEndOverlay()">继续学习</button>
+            <div class="end-done" id="endDone">✅ 提交成功！感谢参与学习～</div>
+        </div>
+    </div>
+
     <!-- ===== 登录弹窗 ===== -->
     <div id="loginOverlay">
         <div id="loginBox">
@@ -1029,6 +1106,7 @@
                 <div class="search-results-overlay" id="searchResults"></div>
             </div>
             <button class="btn-primary" id="lessonToggle">📖 篇目</button>
+            <button id="endBtn" onclick="showEndOverlay()">📤 结束学习</button>
             <span id="userTag"></span>
         </div>
     </header>
@@ -3009,6 +3087,7 @@
             const tag = document.getElementById('userTag');
             tag.textContent = '👤 ' + name;
             tag.style.display = 'inline-block';
+            document.getElementById('endBtn').style.display = 'inline-block';
         }
 
         // Enter键也可以提交登录
@@ -3045,8 +3124,8 @@
         }
 
         // 提交数据到 Google 表单
-        function submitData() {
-            if (!_sessionStart || !_userName) return;
+        // 构建提交参数
+        function buildParams() {
             const durationMin = Math.max(1, Math.round((Date.now() - _sessionStart) / 60000));
             const now = new Date();
             const timeStr = now.getFullYear() + '-'
@@ -3054,11 +3133,8 @@
                 + String(now.getDate()).padStart(2,'0') + ' '
                 + String(now.getHours()).padStart(2,'0') + ':'
                 + String(now.getMinutes()).padStart(2,'0');
-
-            // 节点详情截断，避免超长
             let detailStr = _clickDetail.slice(0, 60).join(' → ');
             if (_clickDetail.length > 60) detailStr += '…(共' + _clickDetail.length + '次)';
-
             const params = new URLSearchParams();
             params.append(ENTRY.name,        _userName);
             params.append(ENTRY.id,          _userId);
@@ -3069,22 +3145,96 @@
             params.append(ENTRY.searchCount, _searchCount);
             params.append(ENTRY.lessons,     [..._lessonsUsed].join('、') || '无');
             params.append(ENTRY.submitTime,  timeStr);
+            return params;
+        }
 
-            // 用 fetch no-cors 方式提交（静默提交，不跳转）
+        // 用图片方式提交（兼容性最好，不受跨域限制）
+        function submitViaImage(params) {
+            const img = new Image();
+            img.src = FORM_BASE + '?' + params.toString();
+        }
+
+        // 主动提交（按钮点击）
+        function submitData() {
+            if (!_sessionStart || !_userName) return;
+            const params = buildParams();
+            // 同时用三种方式提交，确保至少一种成功
+            // 方式1：图片请求
+            submitViaImage(params);
+            // 方式2：fetch no-cors
             fetch(FORM_BASE, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params.toString()
             }).catch(function() {});
+            // 方式3：iframe（静默）
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.name = 'hidden_iframe_' + Date.now();
+                document.body.appendChild(iframe);
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = FORM_BASE;
+                form.target = iframe.name;
+                params.forEach(function(val, key) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = val;
+                    form.appendChild(input);
+                });
+                document.body.appendChild(form);
+                form.submit();
+                setTimeout(function() {
+                    document.body.removeChild(form);
+                    document.body.removeChild(iframe);
+                }, 3000);
+            } catch(e) {}
         }
 
-        // 离开页面时提交
-        window.addEventListener('beforeunload', submitData);
-        // 每5分钟自动备份提交一次（防止长时间使用后关闭没有触发beforeunload）
+        // 显示结束弹窗
+        function showEndOverlay() {
+            if (!_sessionStart || !_userName) return;
+            const durationMin = Math.max(1, Math.round((Date.now() - _sessionStart) / 60000));
+            document.getElementById('endInfo').textContent =
+                '👤 ' + _userName + '　|　⏱️ 本次学习 ' + durationMin + ' 分钟　|　📌 点击 ' + _clickTotal + ' 个知识点';
+            document.getElementById('endOverlay').classList.add('open');
+            document.getElementById('endDone').style.display = 'none';
+            document.getElementById('endSubmitBtn').style.display = 'block';
+        }
+
+        function closeEndOverlay() {
+            document.getElementById('endOverlay').classList.remove('open');
+        }
+
+        // 点击提交按钮
+        function doEndSubmit() {
+            submitData();
+            document.getElementById('endSubmitBtn').style.display = 'none';
+            document.getElementById('endDone').style.display = 'block';
+            // 2秒后关闭弹窗
+            setTimeout(function() {
+                document.getElementById('endOverlay').classList.remove('open');
+            }, 2000);
+        }
+
+        // 关闭页面时弹系统提示（同时触发后台提交）
+        window.addEventListener('beforeunload', function(e) {
+            if (!_sessionStart || !_userName) return;
+            submitData();
+            // 弹出系统确认框提示学生
+            const msg = '请先点击「📤 结束学习」按钮提交学习记录，再关闭页面。';
+            e.preventDefault();
+            e.returnValue = msg;
+            return msg;
+        });
+
+        // 每3分钟静默备份提交一次
         setInterval(function() {
             if (_sessionStart && _userName) submitData();
-        }, 300000);
+        }, 180000);
 
         console.log('📖 古代汉语知识图谱（全七课完整版）已加载');
         console.log(`共 ${nodes.length} 个节点，${edges.length} 条边`);
