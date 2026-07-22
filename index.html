@@ -1,0 +1,2869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古代汉语知识图谱 · 全七课</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    </script>
+    <style>
+        /* ===== 全局样式 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fb;
+            color: #1e293b;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 16px;
+            background: #ffffff;
+            border-bottom: 1px solid #e9edf4;
+            height: 46px;
+            flex-shrink: 0;
+            gap: 8px;
+            flex-wrap: wrap;
+            z-index: 10;
+            position: relative;
+        }
+        .header h1 {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header h1 span {
+            font-weight: 300;
+            font-size: 11px;
+            -webkit-text-fill-color: #94a3b8;
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            background: transparent;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .btn:hover {
+            color: #1e293b;
+            background: #f1f5f9;
+        }
+        .btn.active {
+            background: #ffffff;
+            color: #1e293b;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+        .btn-primary {
+            border: none;
+            background: #1e293b;
+            color: #ffffff;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .btn-primary:hover {
+            background: #334155;
+        }
+        .btn-group {
+            display: flex;
+            gap: 2px;
+            background: #f1f4f9;
+            padding: 2px 4px;
+            border-radius: 30px;
+            flex-wrap: wrap;
+            max-width: 600px;
+        }
+        .hl-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e9edf4;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .hl-row .label {
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+        }
+        .hl-btn {
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            padding: 1px 10px;
+            border-radius: 30px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .hl-btn:hover {
+            border-color: #94a3b8;
+            color: #1e293b;
+        }
+        .hl-btn.active-hl {
+            border-color: #ef4444;
+            background: #fecaca;
+            color: #b91c1c;
+        }
+        .hl-btn#clearHl {
+            border-color: #e2e8f0;
+            color: #94a3b8;
+        }
+        .hl-btn#clearHl:hover {
+            border-color: #94a3b8;
+            color: #1e293b;
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 16px;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .legend-label {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #475569;
+            font-weight: 500;
+        }
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .cat-btn-wrap {
+            position: relative;
+            display: inline-block;
+        }
+        .cat-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+            z-index: 100;
+            min-width: 140px;
+            padding: 6px 0;
+        }
+        .cat-menu.open {
+            display: block;
+        }
+        .cat-menu-group {
+            border-bottom: 1px solid #f1f5f9;
+            padding: 2px 0;
+        }
+        .cat-menu-group:last-child {
+            border-bottom: none;
+        }
+        .cat-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 5px 14px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #475569;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+        .cat-menu-item:hover {
+            background: #f8fafc;
+            color: #1e293b;
+        }
+        .cat-menu-item.active-cat {
+            color: #3b82f6;
+            font-weight: 600;
+            background: #eff6ff;
+        }
+        .sub-arrow {
+            font-size: 9px;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }
+        .cat-menu-item.expanded .sub-arrow {
+            transform: rotate(90deg);
+        }
+        .cat-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-right: 10px;
+        }
+        .cat-parent-btn {
+            flex: 1;
+            text-align: left;
+        }
+        .sub-toggle {
+            font-size: 10px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 2px 4px;
+            transition: transform 0.2s;
+            user-select: none;
+        }
+        .sub-toggle.open {
+            transform: rotate(90deg);
+        }
+        .cat-sub-items {
+            display: none;
+            padding: 2px 6px 4px 20px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .cat-sub-items.open {
+            display: flex;
+        }
+        .cat-sub-btn {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.15s;
+            white-space: nowrap;
+        }
+        .cat-sub-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+        .cat-sub-btn.active-hl,
+        .cat-sub-btn.active-cat {
+            border-color: #3b82f6;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: #f1f4f9;
+            border-radius: 40px;
+            padding: 0 8px;
+            height: 26px;
+            border: 1px solid transparent;
+            transition: 0.2s;
+            min-width: 100px;
+            position: relative;
+        }
+        .search-box:focus-within {
+            background: #ffffff;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 11px;
+            width: 100%;
+            color: #1e293b;
+            font-family: inherit;
+        }
+        .search-box input::placeholder {
+            color: #94a3b8;
+        }
+        .search-box .icon {
+            color: #94a3b8;
+            margin-right: 4px;
+            font-size: 11px;
+        }
+        .search-results-overlay {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 220px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            margin-top: 4px;
+            overflow-y: auto;
+            padding: 6px 0;
+            z-index: 50;
+            border: 1px solid #e9edf4;
+        }
+        .search-results-overlay.open {
+            display: block;
+        }
+        .search-results-overlay .result-group {
+            padding: 0 8px;
+        }
+        .search-results-overlay .result-group .group-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 10px 2px;
+        }
+        .search-results-overlay .result-item {
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.15s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-results-overlay .result-item:hover {
+            background: #f1f5f9;
+        }
+        .search-results-overlay .result-item .ri-left {
+            display: flex;
+            flex-direction: column;
+        }
+        .search-results-overlay .result-item .ri-left .ri-word {
+            font-weight: 500;
+            font-size: 12px;
+        }
+        .search-results-overlay .result-item .ri-left .ri-desc {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 1px;
+        }
+        .search-results-overlay .result-item .ri-tag {
+            font-size: 9px;
+            background: #eef2f6;
+            padding: 1px 8px;
+            border-radius: 20px;
+            color: #475569;
+            flex-shrink: 0;
+            margin-left: 6px;
+        }
+        .search-results-overlay .empty {
+            padding: 14px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -320px;
+            width: 300px;
+            height: 100%;
+            background: #ffffff;
+            z-index: 90;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+            transition: left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sidebar.open {
+            left: 0;
+        }
+        .sidebar .sidebar-header {
+            padding: 12px 16px 10px;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            min-width: 300px;
+        }
+        .sidebar .sidebar-header .close-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .sidebar .sidebar-body {
+            padding: 8px 12px 30px;
+            overflow-y: auto;
+            flex: 1;
+            min-width: 300px;
+        }
+        .dir-item {
+            margin-bottom: 1px;
+        }
+        .dir-label {
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            color: #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.15s;
+            user-select: none;
+        }
+        .dir-label:hover {
+            background: #f1f5f9;
+        }
+        .dir-label .arrow {
+            transition: 0.2s;
+            font-size: 10px;
+            color: #94a3b8;
+        }
+        .dir-label .arrow.open {
+            transform: rotate(90deg);
+        }
+        .dir-children {
+            padding-left: 14px;
+            display: none;
+        }
+        .dir-children.open {
+            display: block;
+        }
+        .module-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
+            padding: 4px 8px 2px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            border-radius: 4px;
+            transition: 0.15s;
+        }
+        .module-label:hover {
+            background: #f1f5f9;
+        }
+        .module-label .mod-arrow {
+            font-size: 9px;
+            color: #94a3b8;
+            transition: 0.2s;
+        }
+        .module-label .mod-arrow.open {
+            transform: rotate(90deg);
+        }
+        .module-children {
+            padding-left: 10px;
+            display: none;
+        }
+        .module-children.open {
+            display: block;
+        }
+        .child-item {
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            color: #475569;
+            transition: 0.15s;
+        }
+        .child-item:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .main {
+            display: flex;
+            height: calc(100vh - 46px - 32px);
+            width: 100%;
+            position: relative;
+        }
+        .chart-wrapper {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            background: #fafcff;
+        }
+        #chart {
+            width: 100%;
+            height: 100%;
+        }
+        .detail-panel {
+            width: 0;
+            overflow: hidden;
+            background: #ffffff;
+            border-left: 1px solid #e9edf4;
+            transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            height: 100%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .detail-panel.open {
+            width: 420px;
+        }
+        .detail-panel .panel-header {
+            padding: 10px 14px 8px;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .detail-panel .panel-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .detail-panel .panel-header .close-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .detail-panel .panel-body {
+            padding: 10px 14px 80px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .detail-item {
+            margin-bottom: 8px;
+        }
+        .detail-item .label {
+            font-weight: 500;
+            color: #64748b;
+            font-size: 11px;
+            display: block;
+            margin-bottom: 1px;
+        }
+        .detail-item .value {
+            color: #1e293b;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .detail-item .value .tag {
+            display: inline-block;
+            background: #eef2f6;
+            padding: 0 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #475569;
+        }
+        .detail-item .value .sentence-box {
+            background: #f8fafc;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border-left: 3px solid #94a3b8;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            color: #334155;
+            font-style: italic;
+            font-size: 13px;
+        }
+        .detail-item .value .sentence-box.indent {
+            margin-left: 14px;
+            border-left-color: #3b82f6;
+        }
+        .detail-item .value .relation-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 0 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .detail-item .value .status-badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 0 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .detail-item .value .evolve-note {
+            background: #f1f5f9;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #475569;
+            margin-top: 2px;
+            border-left: 2px solid #94a3b8;
+        }
+        .entry-block {
+            border-left: 3px solid #3b82f6;
+            padding: 8px 12px 8px 12px;
+            margin-top: 8px;
+            margin-bottom: 10px;
+            background: #eff6ff;
+            border-radius: 8px;
+        }
+        .entry-block .entry-title {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+        .cross-ref-section {
+            margin-top: 16px;
+            border-top: 1px solid #e9edf4;
+            padding-top: 12px;
+        }
+        .cross-ref-header {
+            font-size: 12px;
+            font-weight: 700;
+            color: #16a34a;
+            margin-bottom: 8px;
+            letter-spacing: 0.03em;
+        }
+        .cross-ref-lesson-block {
+            background: #f0fdf4;
+            border-radius: 8px;
+            border-left: 3px solid #22c55e;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+        }
+        .cross-ref-lesson-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #15803d;
+            margin-bottom: 4px;
+        }
+        .cross-ref-entry {
+            margin-bottom: 4px;
+        }
+        .cross-ref-sentence {
+            font-size: 12px;
+            color: #64748b;
+            font-style: italic;
+            margin-top: 2px;
+            padding-left: 8px;
+            border-left: 2px solid #86efac;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal-box {
+            background: #ffffff;
+            border-radius: 14px;
+            max-width: 540px;
+            width: 90%;
+            max-height: 80vh;
+            padding: 18px 20px 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+            overflow-y: auto;
+            animation: modalIn 0.2s ease;
+        }
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        .modal-box .modal-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .modal-box .modal-sub {
+            color: #64748b;
+            font-size: 11px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eef2f6;
+            padding-bottom: 8px;
+        }
+        .modal-box .func-group {
+            margin-bottom: 10px;
+        }
+        .modal-box .func-group .func-title {
+            font-weight: 600;
+            font-size: 13px;
+            color: #0f172a;
+            background: #f1f5f9;
+            padding: 2px 10px;
+            border-radius: 16px;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+        .modal-box .func-group .example-line {
+            padding: 2px 0 2px 12px;
+            border-left: 2px solid #e2e8f0;
+            margin-left: 6px;
+            font-size: 12px;
+            color: #1e293b;
+        }
+        .modal-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eef2f6;
+            padding-bottom: 8px;
+        }
+        .modal-tab {
+            background: none;
+            border: 1px solid #e2e8f0;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.15s;
+        }
+        .modal-tab.active {
+            background: #dbeafe;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+        }
+        .lecture-sense-block {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #3b82f6;
+        }
+        .lecture-sense-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+        .lecture-sense-num {
+            display: inline-block;
+            background: #3b82f6;
+            color: #fff;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            line-height: 18px;
+            font-size: 10px;
+            margin-right: 6px;
+            font-weight: 700;
+        }
+        .lecture-sentence-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            padding: 4px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .lecture-sentence-item:last-child {
+            border-bottom: none;
+        }
+        .lecture-lesson-tag {
+            flex-shrink: 0;
+            font-size: 10px;
+            color: #fff;
+            background: #64748b;
+            border-radius: 4px;
+            padding: 1px 6px;
+            margin-top: 1px;
+        }
+        .lecture-sentence-text {
+            font-size: 12px;
+            color: #334155;
+            font-style: italic;
+            line-height: 1.6;
+        }
+        .modal-box .close-modal-btn {
+            margin-top: 10px;
+            background: #f1f4f9;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 11px;
+            color: #1e293b;
+            transition: 0.2s;
+            width: 100%;
+        }
+        .modal-box .close-modal-btn:hover {
+            background: #e2e8f0;
+        }
+        @media (max-width: 820px) {
+            .header h1 {
+                font-size: 12px;
+            }
+            .header-controls {
+                gap: 3px;
+            }
+            .search-box {
+                min-width: 70px;
+                height: 24px;
+                padding: 0 6px;
+            }
+            .search-box input {
+                font-size: 10px;
+            }
+            .btn {
+                padding: 2px 7px;
+                font-size: 9px;
+            }
+            .btn-primary {
+                padding: 2px 8px;
+                font-size: 9px;
+            }
+            .hl-btn {
+                padding: 1px 8px;
+                font-size: 9px;
+            }
+            .detail-panel.open {
+                width: 280px;
+            }
+            .sidebar {
+                width: 280px;
+                left: -300px;
+            }
+            .btn-group {
+                max-width: 400px;
+            }
+        }
+        @media (max-width: 600px) {
+            .header {
+                padding: 4px 8px;
+                height: auto;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 3px;
+            }
+            .header h1 {
+                text-align: center;
+                font-size: 11px;
+            }
+            .header-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .hl-row {
+                justify-content: center;
+                padding: 2px 8px;
+            }
+            .detail-panel.open {
+                width: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                height: 100%;
+                z-index: 20;
+                border-left: none;
+                box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08);
+            }
+            .modal-box {
+                padding: 12px 14px;
+            }
+            .main {
+                position: relative;
+                height: calc(100vh - 46px - 32px);
+            }
+            .sidebar {
+                width: 260px;
+                left: -280px;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+            .btn-group {
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 顶部栏 ===== -->
+    <header class="header">
+        <h1>📖 古代汉语 · 知识图谱 <span>全七课</span></h1>
+        <div class="header-controls">
+            <button class="btn-primary" id="dirToggle">📚 目录</button>
+            <div class="search-box" style="position:relative;">
+                <span class="icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="搜索字词…" autocomplete="off" />
+                <div class="search-results-overlay" id="searchResults"></div>
+            </div>
+            <button class="btn-primary" id="lessonToggle">📖 篇目</button>
+        </div>
+    </header>
+
+    <!-- ===== 篇目筛选栏 ===== -->
+    <div class="hl-row" id="lessonFilterRow" style="display:none;">
+        <span class="label">📖 篇目：</span>
+        <div class="btn-group" id="filterGroup">
+            <button class="btn active" data-text="all">全部</button>
+            <button class="btn" data-text="精卫填海">精卫填海</button>
+            <button class="btn" data-text="夸父逐日">夸父逐日</button>
+            <button class="btn" data-text="自相矛盾">自相矛盾</button>
+            <button class="btn" data-text="画蛇添足">画蛇添足</button>
+            <button class="btn" data-text="执长竿入城">执长竿入城</button>
+            <button class="btn" data-text="火烧裳尾">火烧裳尾</button>
+            <button class="btn" data-text="远水不救近火">远水不救近火</button>
+            <button class="btn" data-text="拔杨容易栽杨难">拔杨容易栽杨难</button>
+            <button class="btn" data-text="为学">为学</button>
+            <button class="btn" data-text="爱莲说">爱莲说</button>
+            <button class="btn" data-text="马说">马说</button>
+        </div>
+    </div>
+
+    <!-- ===== 图例 ===== -->
+    <div class="legend-row">
+        <span class="legend-label">图例：</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span>实词</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span>虚词</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span>凝固词组</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#10b981;"></span>句式</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>文化</span>
+    </div>
+
+    <!-- ===== 高亮行 ===== -->
+    <div class="hl-row">
+        <span class="label">🎯 高亮：</span>
+        <div class="cat-btn-wrap" id="catBtnWrap">
+            <button class="hl-btn" id="catToggleBtn" onclick="toggleCatMenu()"><span id="catBtnLabel">分类 ▾</span></button>
+            <div class="cat-menu" id="catMenu">
+                <button class="cat-menu-item" data-hl="cat-实词" onclick="toggleCatHlDirect(this)">实词</button>
+                <button class="cat-menu-item" data-hl="cat-虚词" onclick="toggleCatHlDirect(this)">虚词</button>
+                <button class="cat-menu-item" data-hl="cat-凝固词组" onclick="toggleCatHlDirect(this)">凝固词组</button>
+                <button class="cat-menu-item" data-hl="cat-句式" onclick="toggleCatHlDirect(this)">句式</button>
+                <button class="cat-menu-item" data-hl="cat-文化" onclick="toggleCatHlDirect(this)">文化</button>
+            </div>
+        </div>
+        <div class="cat-btn-wrap" id="statusBtnWrap">
+            <button class="hl-btn" id="statusToggleBtn" onclick="toggleStatusMenu()"><span id="statusBtnLabel">文中功能现状 ▾</span></button>
+            <div class="cat-menu" id="statusMenu">
+                <button class="cat-menu-item" data-hl="status-稳定" onclick="toggleStatusHl(this)">稳定</button>
+                <button class="cat-menu-item" data-hl="status-频率下降" onclick="toggleStatusHl(this)">频率下降</button>
+                <button class="cat-menu-item" data-hl="status-受限" onclick="toggleStatusHl(this)">受限</button>
+            </div>
+        </div>
+        <div class="cat-btn-wrap" id="relBtnWrap">
+            <button class="hl-btn" id="relToggleBtn" onclick="toggleRelMenu()"><span id="relBtnLabel">关联类型 ▾</span></button>
+            <div class="cat-menu" id="relMenu" style="min-width:160px;">
+                <div class="cat-menu-group">
+                    <div class="cat-top-row"><button class="cat-menu-item cat-parent-btn" data-hl="rel-语义层" onclick="toggleRelHlGroup(this,'rel-语义层')">语义层</button><span class="sub-toggle" onclick="toggleCatSubById('sub-rel-语义',this)">▸</span></div>
+                    <div class="cat-sub-items" id="sub-rel-语义">
+                        <button class="cat-sub-btn" data-hl="rel-语义扩大" onclick="toggleRelHl(this)">语义扩大</button>
+                        <button class="cat-sub-btn" data-hl="rel-语义缩小" onclick="toggleRelHl(this)">语义缩小</button>
+                        <button class="cat-sub-btn" data-hl="rel-语义转移" onclick="toggleRelHl(this)">语义转移</button>
+                    </div>
+                </div>
+                <div class="cat-menu-group">
+                    <button class="cat-menu-item" data-hl="rel-通假字" onclick="toggleRelHl(this)">通假字</button>
+                    <button class="cat-menu-item" data-hl="rel-古今字" onclick="toggleRelHl(this)">古今字</button>
+                    <button class="cat-menu-item" data-hl="rel-异词同形" onclick="toggleRelHl(this)">异词同形</button>
+                </div>
+                <div class="cat-menu-group">
+                    <div class="cat-top-row"><button class="cat-menu-item cat-parent-btn" data-hl="rel-词类活用" onclick="toggleRelHlGroup(this,'rel-词类活用')">词类活用</button><span class="sub-toggle" onclick="toggleCatSubById('sub-rel-词类',this)">▸</span></div>
+                    <div class="cat-sub-items" id="sub-rel-词类">
+                        <button class="cat-sub-btn" data-hl="rel-词类活用·名作动" onclick="toggleRelHl(this)">名作动</button>
+                        <button class="cat-sub-btn" data-hl="rel-词类活用·形作动" onclick="toggleRelHl(this)">形作动</button>
+                        <button class="cat-sub-btn" data-hl="rel-词类活用·使动" onclick="toggleRelHl(this)">使动</button>
+                        <button class="cat-sub-btn" data-hl="rel-词类活用·名作状" onclick="toggleRelHl(this)">名作状</button>
+                    </div>
+                </div>
+                <div class="cat-menu-group">
+                    <div class="cat-top-row"><button class="cat-menu-item cat-parent-btn" data-hl="rel-句式" onclick="toggleRelHlGroup(this,'rel-句式')">句式</button><span class="sub-toggle" onclick="toggleCatSubById('sub-rel-句式',this)">▸</span></div>
+                    <div class="cat-sub-items" id="sub-rel-句式">
+                        <button class="cat-sub-btn" data-hl="rel-省略句" onclick="toggleRelHl(this)">省略句</button>
+                        <button class="cat-sub-btn" data-hl="rel-判断句" onclick="toggleRelHl(this)">判断句</button>
+                        <button class="cat-sub-btn" data-hl="rel-定语后置" onclick="toggleRelHl(this)">定语后置</button>
+                        <button class="cat-sub-btn" data-hl="rel-被动句" onclick="toggleRelHl(this)">被动句</button>
+                        <button class="cat-sub-btn" data-hl="rel-倒装句" onclick="toggleRelHl(this)">倒装句</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="hl-btn" data-hl="cross">跨课关联</button>
+        <button class="hl-btn" id="clearHl">清除</button>
+    </div>
+
+    <!-- ===== 主体 ===== -->
+    <div class="main">
+        <div class="chart-wrapper">
+            <div id="chart"></div>
+        </div>
+        <div class="detail-panel" id="detailPanel">
+            <div class="panel-header">
+                <h2 id="detailTitle">节点详情</h2>
+                <button class="close-btn" id="closePanel">✕</button>
+            </div>
+            <div class="panel-body" id="detailBody">
+                <div style="color:#94a3b8;text-align:center;padding-top:40px;font-size:13px;">点击知识点查看详情</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 侧边栏 ===== -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>📚 语言点目录</h2>
+            <button class="close-btn" id="sidebarClose">✕</button>
+        </div>
+        <div class="sidebar-body" id="sidebarBody"></div>
+    </div>
+
+    <!-- ===== 跨课关联弹窗 ===== -->
+    <div class="modal-overlay" id="crossModal">
+        <div class="modal-box">
+            <div class="modal-title" id="modalTitle">📎 跨课关联</div>
+            <div class="modal-sub" id="modalSub">同一字词在不同课文中的呈现</div>
+            <div class="modal-tabs" id="modalTabs">
+                <button class="modal-tab active" id="tabCross" onclick="switchModalTab('cross')">跨课概览</button>
+                <button class="modal-tab" id="tabLecture" onclick="switchModalTab('lecture')">讲解</button>
+            </div>
+            <div id="modalBody"></div>
+            <div id="modalLectureBody" style="display:none;"></div>
+            <button class="close-modal-btn" id="closeModal">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. 完整数据定义（全部七课）
+        // ============================================================
+        const allData = [
+            // ===== 精卫填海 =====
+            ["精卫填海", "少女", "实词", "shào nǚ", "小女儿", "年轻未婚女子：少女时代、青春少女", "", "是炎帝之少女，名曰女娃", "语义扩大",
+                "文中义基本已经不再使用，原词义范围由专指家中年纪最小的女儿，拓展为泛指年轻未婚的年轻女性", "", false, "受限", "语义扩大"
+            ],
+            ["精卫填海", "文", "实词", "wén", "花纹（通假字，同 \"纹\"）",
+                "1.现专用 \"纹\" 字表示花纹、纹理：纹身、纹路、花纹。2.“文”现在常表示文采、文章、文化、文学", "", "文首，白喙，赤足", "通假字",
+                "上古时期以 “文” 承载花纹本义，后世汉字分化出新字 “纹” 专门承担该语义，“文” 不再用以表示花纹含义", "", false, "", "通假字"
+            ],
+            ["精卫填海", "曰", "实词", "yuē", "本义为“说”；文中指“称为”", "现代口语不用，仅存于书面语：名曰、美其名曰", "", "名曰精卫", "",
+                "“曰”的“说”义没有变化，但这个字现代口语中不使用，只在古文引用中出现（如“子曰”）。", "1.说：子～诗云。2.为（wéi ），是：一～水，二～火，三～木，四～金，五～土。", false, "受限", ""
+            ],
+            ["精卫填海", "堙", "实词", "yīn", "填塞", "堵塞：～窒。～郁（闷塞，气郁结不畅）。", "", "常衔西山之木石，以堙于东海", "",
+                "“堙” 的 “填塞” 义没有变化，但现代很少使用这个字，只在极少数书面词语中偶见，字的使用受限而非义变。", "", false, "受限", ""
+            ],
+            ["精卫填海", "北", "实词", "", "名词 \"北\" 活用作状语：向北", "现代需说 \"向北\"，不能直接用名词作状语：向北走、南来北往", "",
+                "又北二百里，曰发鸠（jiū）之山", "词类活用・名作状", "该用法为文言特有词类活用形式", "", false, "", "词类活用・名作状"
+            ],
+            ["精卫填海", "之", "虚词", "zhī", "结构助词“的”", "现代通用助词\"的\"承担相同功能，书面语仍沿用\"之\"：祖国之山河、友人之书信", "",
+                "发鸠之山／是炎帝之少女／常衔西山之木石", "", "现代汉语用助词 “的” 承接同类语法作用", "", false, "频率下降", ""
+            ],
+            ["精卫填海", "焉", "虚词", "yān", "兼词，相当于 \"于之 / 于是\"（在这里）", "现代不单用，仅存于固定短语：心不在焉、语焉不详", "",
+                "有鸟焉，其状如乌", "", "文言特有的兼词用法在现代汉语中基本不再使用，该语义仅留存于心不在焉、语焉不详这类固定书面成语之内", "", false, "受限", ""
+            ],
+            ["精卫填海", "是", "虚词", "shì", "指示代词：这 / 这个", "这，此：～日。～可忍，孰不可忍。比比皆～。", "", "是炎帝之少女，名曰女娃", "",
+                "文中指示代词 “这、这个” 的用法现代汉语中基本消失，该字经语法化路径演变为现代汉语判断句核心词，现代主要表示判断-是不是", "", false, "受限", ""
+            ],
+            ["精卫填海", "自 + V 构词", "凝固词组", "", "文言 \"自\"+ 单音节动词表反身动作", "现代高频构词法，能产性强",
+                "自夸、自卫、自救、自残、自荐、自恋、自学、自律", "名曰：“精卫”，其鸣自詨（xiāo）", "凝固词组", "构词模式从古沿用至今，现代汉语依旧高频使用该构词方式", "",
+                false, "稳定", "凝固词组"
+            ],
+            ["精卫填海", "倒装句", "句式", "", "状语后置，介词结构（于 + 宾语）后置于动词", "现代状语多前置", "他在东海游玩（现代）←女娃游于东海（古）",
+                "女娃游于东海／常衔西山之木石，以堙于东海", "倒装句", "状语后置是古代汉语特有的语序，现代汉语中状语放在动词前面。", "", false, "受限", "倒装句"
+            ],
+            ["精卫填海", "《山海经》", "文化", "shān hǎi jīng", "", "", "", "", "文化",
+                "", "《山海经》是古代地理名著。全书共18卷，分\"山经\"和\"海经\"两大部分。作为中国最古老的奇书之一，它充满了神话、地理和想象，涵盖了中国古代山川、各地民俗、物产资源以及大量神异鬼怪的传说，是中华民族文化宝库中的璀璨明珠。文化典籍古今价值稳定，长期用于上古神话与地理溯源研究。",
+                true, "", "文化"
+            ],
+            ["精卫填海", "精卫填海（成语）", "文化", "jīng wèi tián hǎi", "", "", "", "", "文化",
+                "",
+                "本课讲述炎帝小女儿女娃在东海游玩时溺水身亡，死后化为精卫鸟，日复一日衔树枝、石块想要填平大海的神话故事。课文主题是赞美坚持不懈、不畏艰难、执着坚守的品质。成语《精卫填海》比喻意志坚定，持之以恒地克服困难、追求目标。例句：1.学习汉语并不容易，我们要有精卫填海的精神，坚持每天练习。2.他凭着精卫填海般的毅力，顺利完成了这项艰巨的任务。3.只要拥有精卫填海的恒心，再大的困难也能慢慢克服。4.精卫填海的故事激励着我们，做事不要半途而废。",
+                true, "", "文化"
+            ],
+            // ===== 夸父逐日 =====
+            ["夸父逐日", "走", "实词", "zǒu", "跑（古义）", "1.行：～路。～步。2.古代指奔跑：～马。不胫而～。", "", "夸父与日逐走，入日", "语义转移",
+                "课文中 “走” 是 “跑” 的意思。现代 “走” 的常用义变成了 “步行”，“跑” 义只保留在成语 “不胫而走”“走马观花” 中。", "", false, "受限",
+                "语义转移"
+            ],
+            ["夸父逐日", "河", "实词", "hé", "专指黄河", "1.水道的通称：～道。～沟。～谷。～流。～滩。2.特指中国黄河：～套。～防。3.指“银河系”：天～。～汉。",
+                "", "饮于河、渭；河、渭不足，北饮大泽", "语义扩大", "课文中 “河” 专指黄河。现代 “河” 泛指所有水道，词义扩大了。“河套”“河防” 中仍保留黄河专指义，现代专指黄河之义频率下降。",
+                "", false, "频率下降", "语义扩大"
+            ],
+            ["夸父逐日", "至", "实词", "zhì", "到达", "义未变，但使用场域收窄为固定短语：至此、至今、至死不悟、自始至终", "", "未至，道渴而死", "",
+                "文言中 “到达” 的核心词义古今未发生改变，只是现代汉语里该字较少单独作谓语动词，多凝结在固定短语当中，核心语义仍常用。", "", false, "稳定", ""
+            ],
+            ["夸父逐日", "道", "实词", "dào", "名作状：在路上（现代无此用法）", "名词充当状语是文言特殊活用手法，现代汉语需依靠介词短语实现该语义", "",
+                "未至，道渴而死", "词类活用・名作状", "", "1.路，方向，途径：～路。铁～。志同～合。2.指法则、规律：～理。～德。～义。得～多助，失～寡助。3.方法，办法，技术：门～。医～。4.说，讲：～白。常言～。能说会～。",
+                false, "", "词类活用・名作状"
+            ],
+            ["夸父逐日", "弃", "实词", "qì", "（会意字，本义用双手将婴儿抛掉）文中为引申义：扔掉；舍去", "扔掉；舍去：弃权、放弃、抛弃、前功尽弃", "",
+                "弃其杖，化为邓林", "", "文中义在现代为常用义。", "注意：词义本义从抛扔婴儿这一具体动作，拓展为舍弃各类人、事物的抽象含义，属于\"语义演变扩大\"。", false, "稳定", ""
+            ],
+            ["夸父逐日", "逐", "实词", "zhú", "追赶", "1.强迫离开：～客令。放～。驱～。2.依照先后次序，一一挨着：～步。～个。～渐。～年。～一。3.追赶：～鹿（喻争夺天下）。角（jué）～（争相取胜）。追～。笑～颜开。",
+                "", "夸父与日逐走，入日", "", "具体追赶义古今一致，该本义从古至今均为常用语义，未发生词义演变", "", false, "稳定", ""
+            ],
+            ["夸父逐日", "北", "实词", "", "名词 \"北\" 活用作状语：向北", "现代需说向北：向北走", "", "北饮大泽", "词类活用・名作状",
+                "与前文精卫填海 “北” 名作状用法一致，文言名词可直接作状语，现代汉语需搭配介词", "", false, "", "词类活用・名作状"
+            ],
+            ["夸父逐日", "弃 + N/V 构词", "凝固词组", "", "文言 \"弃\" 作词素构成名词或动词", "现代构词法延续：弃儿、弃婴、弃妇；弃学、弃权、弃耕", "",
+                "弃其杖，化为邓林", "凝固词组", "以 “弃” 为构词词素的组合模式传承至今，现代汉语仍大量使用", "", false, "稳定", "凝固词组"
+            ],
+            ["夸父逐日", "倒装句", "句式", "", "状语后置，介词结构后置", "现代状语前置：到黄河喝水（现代）←饮于河（古）", "", "饮于河、渭", "倒装句",
+                "文言介词结构后置为固定语序特点，现代汉语需将介宾短语前置", "", false, "受限", "倒装句"
+            ],
+            ["夸父逐日", "省略句，省略主语", "句式", "", "省略主语，需据上下文补出", "（夸父）还没到达，就在路上渴死了", "", "（夸父）未至，道渴而死；（夸父）弃其杖",
+                "省略句", "古汉语主语省略现象更为普遍，依托上下文即可明确缺失主语", "", false, "稳定", "省略句"
+            ],
+            ["夸父逐日", "邓林（桃文化）", "文化", "dèng lín", "", "", "", "弃其杖，化为邓林", "文化",
+                "", "邓林：传说地名，一说为桃林。桃木：民间镇邪避凶；桃花源喻理想境地；蟠桃为仙界意象。桃木剑、桃符、世外桃源、蟠桃宴", true, "", "文化"
+            ],
+            ["夸父逐日", "夸父逐日（成语）", "文化", "kuā fù zhú rì", "", "", "", "篇名", "文化",
+                "",
+                "“夸父逐日”出自《山海经·海外北经》的上古神话，字面义为夸父追赶太阳；在后世使用中发展出褒贬兼具的双重喻义。褒义上用以比喻志向宏伟、执着坚韧，为追求理想甘愿付出、一往无前。贬义上则指脱离实际、不自量力，盲目追逐远超自身能力的目标，最终徒劳无功。",
+                true, "", "文化"
+            ],
+            // ===== 自相矛盾 =====
+            ["自相矛盾", "鬻", "实词", "yù", "动词，卖、出售", "现代汉语中该用法仅存于书面文言、成语中，口语用 \"卖\" 替代：卖官鬻爵、鬻画为生", "",
+                "楚人有鬻盾与矛者", "", "“鬻” 是 “卖” 的意思，词义没有变化，但这个字现代口语不使用，仅出现在文言书面语中。现代用 “卖”。", "", false, "受限", ""
+            ],
+            ["自相矛盾", "誉", "实词", "yù", "动词，称赞、夸赞、夸耀", "1.称扬，赞美：毁～。交口称～。2.名声：荣～。名～。信～。沽名钓～。", "",
+                "誉之曰", "语义转移", "“誉” 的动词 “称赞” 义仍常用（如 “赞誉”“交口称誉”），同时语义转移，扩展出更常用的“名声” 义（如 “荣誉”“信誉”）。", "",
+                false, "稳定", "语义转移"
+            ],
+            ["自相矛盾", "陷", "实词", "xiàn", "掉进，坠入。文中指“刺穿、刺破、穿透”",
+                "1.掉进，坠入，沉下：～落。～没（mò）。～溺。～于。～入。2.为捉野兽挖的坑：～坑。～阱。3.凹进：双眼深～。4.设计害人：～害。诬～。～人于罪。5.攻破，占领：失～。沦～。6.缺点：缺～。",
+                "", "物莫能陷也 / 于物无不陷也", "", "现代 “陷” 的常用义仍是 “掉进、陷入”", "", false, "稳定", ""
+            ],
+            ["自相矛盾", "之", "虚词", "zhī", "代词，指代前文提到的人或事物", "现代口语用 \"它 / 他\" 替代，书面语/成语中保留代词用法：置之不理、求之不得、言之有理",
+                "", "誉（yù）之曰（吾盾之坚，物莫能陷（xiàn）也。）", "", "“之” 作代词相当于 “它”，口语中用 “它 / 他”，书面语和成语中保留。", "", false, "频率下降", ""
+            ],
+            ["自相矛盾", "之", "虚词", "zhī", "结构助词，连接定语和中心语，表领属/修饰关系，译为\"的\"",
+                "现代汉语用助词 \"的\" 承担相同功能，书面语中仍保留 \"之\" 的用法：少年之志、草木之香、山河之辽阔", "", "吾盾之坚；以子之矛陷子之盾", "",
+                "“之” 作助词相当于 “的”，口语中用 “的”，书面语中保留。", "", false, "频率下降", ""
+            ],
+            ["自相矛盾", "弗", "虚词", "fú", "否定副词，用法同 \"不\"，译为 \"不、不能\"", "仅存于固定成语、文言文中，口语已不再使用：自愧弗如、弗能、弗敢",
+                "", "其人弗能应也", "", "“弗” 相当于 “不”，现代口语不使用，只保留在成语 “自愧弗如” 等书面语中。", "", false, "频率下降", ""
+            ],
+            ["自相矛盾", "无不", "凝固词组", "wú bù", "双重否定副词，译为 \"没有不、全都\"，表示肯定的意思", "现代汉语中仍保留该双重否定结构，用法完全一致：无不为之感动、无不称赞",
+                "", "于物无不陷也", "凝固词组", "双重否定表肯定的语法功能古今完全一致，现代汉语中仍沿用该结构", "", false, "稳定", "凝固词组"
+            ],
+            ["自相矛盾", "者", "凝固词组", "", "\"者\" 为指示代词，放在动词/形容词后，指代人或事物，译为 \"…… 的人 /…… 的事物\"",
+                "现代汉语中使用\"…… 的人 /…… 的事物\"：卖盾和矛的人、有学问的人", "", "楚人有鬻盾与矛者", "凝固词组",
+                "“…… 者” 指代 “…… 的人 / 事物”。虽然 “记者”“学者” 等复合词常用，但作为自由构句结构（如 “善游者”），现代口语已用 “…… 的人” 替代。",
+                "现代汉语主要出现在词语“行者、读者、作者、记者”等词语中，作为名词性后缀（构词语素），附着在动词后面，构成名词。", false, "频率下降", "凝固词组"
+            ],
+            ["自相矛盾", "何如（固定疑问句式）", "凝固词组", "", "固定疑问句式，用于询问方法、情况、结果，译为 \"怎么样、如何\"",
+                "现代汉语口语中多用 \"怎么样\" 替代：你看此事怎么样？、这个方案怎么样？", "", "以子之矛陷子之盾，何如？", "凝固词组", "", "", false, "受限",
+                "凝固词组"
+            ],
+            ["自相矛盾", "韩非", "文化", "", "", "", "", "（全文出处）", "文化",
+                "", "《韩非子》是战国末期法家代表人物韩非的哲理散文集，被后人整理而成。韩非（约公元前280年—前233年），战国末期韩国人，法家代表人物之一，主张以法治国，是先秦法家思想的集大成者，其思想被秦始皇采纳，成为秦朝的治国思想。保存了大量的寓言故事，如《自相矛盾》《守株待兔》等",
+                true, "", "文化"
+            ],
+            ["自相矛盾", "自相矛盾（成语）", "文化", "zì xiāng máo dùn", "", "", "", "以子之矛，陷子之盾（篇名整体）", "文化",
+                "",
+                "自相矛盾（成语）读音：zì xiāng máo dùn 出处：出自《韩非子・难一》，源自同名寓言故事。字面含义：楚国有个卖矛和盾的人，先是夸耀自己的盾坚固无比，任何东西都刺不穿，又吹嘘自己的矛锋利至极，没有什么东西刺不透，旁人反问他“用你的矛刺你的盾会怎样”，此人顿时无言以对。引申义：比喻一个人的言语、言行前后相互抵触，无法自圆其说。用法：多作贬义，用来批评言行相悖、逻辑混乱的人或言论。",
+                true, "", "文化"
+            ],
+            // ===== 画蛇添足 =====
+            ["画蛇添足", "画", "实词", "huà", "“画”字像手执毛笔给田地画田界之形。文中指描画、勾勒图形", "沿用描画本义：画画、画图", "",
+                "乃左手持卮，右手画蛇", "", "", "", false, "稳定", ""
+            ],
+            ["画蛇添足", "蛇", "实词", "shé", "名词，无足爬行动物", "词义完全保留，用法不变：毒蛇、蟒蛇", "", "请画地为蛇", "古今字",
+                "", "注意：古字“它”本义就是蛇，早期用“它”表示蛇。假借演变：“它”被借去作第三人称代词，本义被挤占。今字“蛇”在古字“它”基础上加形旁虫，新造“蛇”，专门承接“它”原本的蛇义。",
+                false, "稳定", "古今字"
+            ],
+            ["画蛇添足", "舍", "实词", "shè", "像房屋之形，上像屋顶，中像梁柱，下像基石。本义为房舍。引申为饲养家畜和家禽的房屋。", "居住的房子：宿～。旅～。校～。",
+                "", "楚有祠（cí）者，赐其舍（shè）人卮（zhī）酒", "", "", "舍作动词表给予，再由此引申表示以下意义，读作舍shě：1.放弃，不要了：～己为人。～近求远。四～五入。2.施舍：～粥。～药。",
+                false, "稳定", ""
+            ],
+            ["画蛇添足", "余", "实词", "yú", "剩余", "剩下来的，多出来的：剩～。～粮。～兴。～悸。～孽。节～。～生。", "", "一人饮之有余",
+                "古今字；异词同形；", "“余” 的 “剩余” 义古今完全一致，如 “剩余”“余额”“业余”“其余”。",
+                "注意：“余”对应过去两个字。一是“余”，“舍”之初文，“余”象以木柱支撑屋顶的房舍，本义是房舍。即“余”为古字，“舍”为今字。另“余”文言文中常假借作第一人称词。现在主要用作姓。二是剩余的“余”，繁体为“餘”，表示“剩余的食物”。由本义引申为剩下来的，多出来的。“餘”现代简化后写作“余”，异词同形。",
+                false, "稳定", "古今字；异词同形；"
+            ],
+            ["画蛇添足", "引", "实词", "yǐn", "牵拉、拿取，此处指端起（酒器）", "1.拉，伸：～力。～颈。～而不发。～吭高歌。2.领，招来：～见。～子。～言。～导。～荐。抛砖～玉。3.拿来做证据、凭据或理由：～文。～用。援～。",
+                "", "引酒且饮之", "语义转移",
+                "引，该字本义是拉弓，文中指“牵拉、拿取”，用于描述\"端起\"这一具体义项现代几乎不用。现代汉语里“引”多表示带领、招引、引用，动作指向、内涵和使用对象都发生了改变，语义转移。",
+                "“引”古代汉语常用义：1.本义：拉弓、开弓。2.拉、牵、拽（最常用引申）。3.拿、取、端。4.带领、引导。5.退、退却。6.引用、援引。", false, "受限",
+                "语义转移"
+            ],
+            ["画蛇添足", "且", "实词", "qiě", "副词，将要、准备", "1.表示将要、将近：城～拔矣。年～九十。2.尚，还，表示进一层：既高～大。尚～。况～。3.表示暂时：苟～偷安。姑～。",
+                "", "引酒且饮之", "语义转移", "课文中 “且” 是 “将要” 的意思。现代 “且”语义转移，最常用作连词 “而且 / 并且”，“将要” 义只在古文中出现。",
+                "", false, "受限", "语义转移"
+            ],
+            ["画蛇添足", "固", "实词", "gù", "副词，本来、原本", "1.结实，牢靠：坚～。稳～。巩～。凝～。加～。2.坚定，不变动：～执。～定。～本。3.本，原来：～有。～步自封（亦作“故步自封”）",
+                "", "蛇固无足", "语义转移", "本义为本来，语义保留，后拓展出形容质地如“坚固”、性格的义项如“固执”，语义转移。\"副词'本来'义频率下降。", "", false,
+                "频率下降", "语义转移"
+            ],
+            ["画蛇添足", "成", "实词", "chéng", "动词，完成、画好", "本义完整保留，衍生出成功、成为、成果等义：完成、成功、成长", "", "一人蛇先成", "",
+                "", "", false, "稳定", ""
+            ],
+            ["画蛇添足", "亡", "实词", "wáng", "动词，失去、丢掉", "1.逃：逃～。流～。2.失去：～佚。～羊补牢。3.死：伤～。死～。", "",
+                "终亡其酒", "语义转移", "课文中 “亡” 是 “失去、丢掉” 的意思，该义保留在 “亡羊补牢” 中。现代常用义是 “死亡 / 灭亡”，词义中心已转移。", "",
+                false, "受限", "语义转移"
+            ],
+            ["画蛇添足", "之", "虚词", "zhī", "代词，指代前文提到的人或事物", "口语用 \"它\"，书面/文言保留该代词用法：取之不尽、用之不竭",
+                "", "数人饮之不足，一人饮之有余；引酒且饮之；吾能为之足；子安能为之足", "", "之作代词相当于\"它\"，口语用\"它/他\"替代，书面语和成语中保留（如\"取而代之\"）。",
+                "", false, "频率下降", ""
+            ],
+            ["画蛇添足", "之", "虚词", "zhī", "结构助词，译为 \"的\"", "现代通用助词 \"的\" 承担相同功能，书面语仍沿用 \"之\"：祖国之山河、友人之书信",
+                "", "未成，一人之蛇成", "", "\"之\"作结构助词相当于\"的\"，口语用\"的\"，书面语保留（如\"成功之路\"）", "", false, "频率下降", ""
+            ],
+            ["画蛇添足", "者", "凝固词组", "", "\"者\" 附在名词/动词后，指代 \"…… 的人 / 事物\"", "现代汉语仍沿用该结构，用法一致：行者、读者、作者、记者",
+                "", "楚有祠者/为蛇足者，终亡其酒", "凝固词组",
+                "\"……者\"指代\"……的人/事物\"（如\"画蛇者\"=画蛇的人）。现代口语已用\"……的人/事物\"替代，书面正式语境偶见。现代汉语主要出现在词语“行者、读者、作者、记者”等词语中，作为名词性后缀（构词语素），附着在动词后面，构成名词。",
+                "", false, "频率下降", "凝固词组"
+            ],
+            ["画蛇添足", "安能", "凝固词组", "ān néng", "固定疑问短语，怎么能", "现代书面语仍沿用，口语多用 \"怎么能\" 替代：安能如此、安能放弃", "",
+                "安能为之足？", "凝固词组", "“安能” 相当于 “怎么能”，现代口语不用，仅见于文言引用。", "", false, "受限", "凝固词组"
+            ],
+            ["画蛇添足", "《战国策》", "文化", "", "", "", "", "", "文化",
+                "", "先秦经典历史典籍，文史研究常用书目，简称《国策》，分国记事的历史散文著作；全书共33卷，分为东周、西周、秦、齐、楚、赵、魏、韩、燕、宋、卫、中山十二策", true, "",
+                "文化"
+            ],
+            ["画蛇添足", "画蛇添足（成语）", "文化", "", "", "", "", "", "文化",
+                "", "本篇寓言讲述众人比赛画蛇，一人画完后多此一举给蛇添上脚，最终失去酒的故事；成语寓意：做了多余的事，非但无益，反而坏事", true, "", "文化"
+            ],
+            // ===== 执长竿入城 =====
+            ["执长竿入城", "执", "实词", "zhí", "甲骨文为会意字，像两手戴桎梏，本义拘捕，核心义为抓紧、掌握；动词，握、持、拿",
+                "1.动词，握持、拿着：～刃。～鞭。～笔。2.动词，执行、依照规定行事：执法以严，违法必究。3.动词，坚持、执意：他执意要走。4.动词，主管、掌管：老国王执政期间，天下太平",
+                "", "鲁有执长竿入城门者/初竖执之", "", "“执” 的 “握 / 拿” 义仍常用。",
+                "注意：本义为拘捕，引申出握持物体的含义，语义转移；文中表示“握、持、拿”，该语义保留在现代汉语中，后词义范围拓展，语义转移，引申出“执行、坚持、主管”等义。", false, "稳定", ""
+            ],
+            ["执长竿入城", "初", "实词", "chū", "名词/副词，开始、起初、原来", "名词/副词，开始、最初、原先：起初、初始、年初", "",
+                "初竖执之", "", "“初” 的 “开始 / 最初” 义古今完全一致，如 “初次”“最初”“初学者”。",
+                "注意：“初”甲骨文会意字，本义为用刀裁衣（表起始），后引申泛指一切事物的开端、原本状态，属于语义扩大。", false, "稳定", ""
+            ],
+            ["执长竿入城", "而", "虚词", "ér", "连词，表承接，连接先后发生的动作，译为\"就、然后\"", "连词承接用法沿用至今：取而代之、择善而从",
+                "", "遂依而截之", "", "“而” 作承接连词（然后 / 就），书面语保留，口语多用 “然后”“就”。", "", false, "频率下降", ""
+            ],
+            ["执长竿入城", "而", "虚词", "ér", "连词，表修饰，前词表方式、状态，后词表动作", "连词修饰用法沿用至今：缓步而行、席地而坐、侃侃而谈",
+                "", "何不以锯中截而入", "", "“而” 作修饰连词，连接方式与动作，书面语保留，口语不单独使用。", "", false, "频率下降", ""
+            ],
+            ["执长竿入城", "者", "凝固词组", "", "\"者\"附于短语后，指代\"……的人\"", "现代汉语仍沿用该结构，用法不变：\"……的人\"", "",
+                "鲁有执长竿入城门者", "凝固词组", "\"……者\"指代\"……的人\"（如\"执竿者\"=拿长竿的人）。现代口语已用\"……的人\"替代，书面正式语境偶见。",
+                "", false, "频率下降", "凝固词组"
+            ],
+            ["执长竿入城", "何不", "凝固词组", "", "固定句式，译为\"为什么不……？\"，用来提出建议", "现代口语多用\"为什么不……？\"个别语境下正常使用该句式：何不结伴同行？",
+                "", "何不以锯中截而入", "凝固词组", "“何不” 相当于 “为什么不……”，现代口语用 “为什么不”，书面偶见 “何不”。", "", false,
+                "频率下降", "凝固词组"
+            ],
+            ["执长竿入城", "无所+动词", "凝固词组", "", "\"无所+动词\"经典组合格式，表\"没有可……的\"", "用法沿用至今：无所畏惧、无所不谈",
+                "", "计无所出", "凝固词组", "“无所 + 动词” 结构沿用至今，如 “无所不知”“无所作为”“无所适从”。", "", false, "稳定",
+                "凝固词组"
+            ],
+            ["执长竿入城", "《笑林》", "文化", "", "", "", "", "《执长竿入城》出处", "文化",
+                "", "中国最早的笑话集。邯郸淳（约132-221），《笑林》编撰人又名竺，字子叔，东汉末年颍川人，东汉知名文人。本文《持长竿入城》选自此书；古代笑话特点：短小精悍、语言精炼、寓意深刻",
+                true, "", "文化"
+            ],
+            ["执长竿入城", "执长竿入城（典故）", "文化", "", "", "", "", "", "文化",
+                "", "《执长竿入城》这则古代笑话讲述鲁人持长竿入城，横竖皆无法进入，又听信老者盲目截断竹竿的荒唐建议，最终损毁竹竿的故事，讽刺了思维僵化、不懂灵活变通的人，同时也批评了那些倚老卖老、自作聪明、胡乱出主意的人，告诫人们遇事要独立思考、多方尝试，切莫盲从他人、墨守成规。",
+                true, "", "文化"
+            ],
+            // ===== 火烧裳尾 =====
+            ["火烧裳尾", "裳", "实词", "cháng", "名词，古代指下衣、裙子，此处泛指衣服的下摆", "现多用于书面语，泛指衣裳、衣服：衣裳、霓裳羽衣",
+                "", "见人裳尾为火所烧", "语义扩大", "古义专指下衣，后词义扩大泛指全身衣服，读作\"shang\"，口语中多与\"衣\"连用。古义下衣专指已消退。", "",
+                false, "受限", "语义扩大"
+            ],
+            ["火烧裳尾", "恐", "实词", "kǒng", "动词，担心、害怕", "1.担心，害怕，畏惧：～惧。～怖。～慌。惊～。有恃无～。2.恫吓：～吓（hè）。3.副词，恐怕（表推测）：～怕。～不能成功。",
+                "", "欲言之，恐君性急", "", "本义为害怕，后引申出副词用法表推测。", "", false, "稳定", ""
+            ],
+            ["火烧裳尾", "是", "实词", "shì", "形容词（对、正确）", "是-01 形容词，对、正确：一无是处、自以为是非、实事求是", "",
+                "然则言之是耶", "", "本义为正确，后引申出判断动词用法，成为现代汉语核心义项，词义范围扩大", "", false, "稳定", ""
+            ],
+            ["火烧裳尾", "是", "虚词", "shì", "代词，这样、如此", "代词，这样、如此：是日天气晴朗、如是", "", "其人曰：\"我言君性急，果是。\"",
+                "", "“是” 作代词 “这样 / 如此”，现代口语不用，仅在古文和书面语中出现。", "", false, "受限", ""
+            ],
+            ["火烧裳尾", "为……所……", "句式", "wéi……suǒ……", "文言固定被动句式，译为\"被……\"，表示主语受动作支配", "现代汉语仍广泛使用该被动结构，表被动含义：为生活所迫、为大自然所陶醉、为人们所重视",
+                "", "见人裳尾为火所烧", "被动句", "“为……所……” 被动结构在现代书面语中仍使用（如 “为人所知”“为世人所称道”），口语中用 “被” 字句。", "",
+                false, "频率下降", "被动句"
+            ],
+            ["火烧裳尾", "火烧裳尾", "文化", "", "", "", "", "", "文化",
+                "", "寓言通过慢性子的人迟迟不提醒他人衣服着火，最终引发对方大怒的故事，讽刺了做事迂腐、不分轻重缓急的慢性子人。成为形容人做事拖沓、不分场合、不知变通的经典典故。告诫我们遇事要灵活变通，不能像《火烧裳尾》里的人一样迂腐死板。",
+                true, "", "文化"
+            ],
+            // ===== 远水不救近火 =====
+            ["远水不救近火", "使", "实词", "shǐ", "动词，叫、让，指使他人做某事", "动词，使、让；现代主语为人时多改用\"叫、让\"：这部电影使观众很感动；老师让我通知大家",
+                "", "鲁穆公使众公子或宦于晋，或宦于荆", "", "文言中通用\"使\"表指使，现代汉语使用场景收窄，人称主语下多替换为\"叫、让\"", "", false,
+                "稳定", ""
+            ],
+            ["远水不救近火", "众", "实词", "zhòng", "1.形容词，很多、众多", "1.形容词，数量多：人口众多、敌众我寡、众人拾柴火焰高。2.名词，许多人：观众、听众、众目睽睽。",
+                "", "鲁穆公使众公子或宦于晋", "", "本义为多人，后衍生出形容词用法“很多”，语义扩大", "", false, "稳定", ""
+            ],
+            ["远水不救近火", "公子", "实词", "gōng zǐ", "指诸侯的儿子，具体到课文中，就是鲁国君主（鲁穆公）的儿子们，属于先秦贵族的特定称谓，是诸侯之子的专称。",
+                "沿用古义，现多用来尊称他人的孩子，也用于\"公子哥儿\"指不学无术的年轻人：公子哥儿", "", "鲁穆公使众公子或宦于晋", "语义扩大",
+                "先秦“公子”专指诸侯之子，后来扩大到泛指公卿、士族乃至普通年轻男子，指称对象变多，语义扩大；同时，后还衍生出“公子哥儿”这类贬义用法，语义转移。",
+                "先秦：诸侯之子；汉至唐：公卿之子；北宋后：豪门士族青年男子；近现代：尊称年轻男子，也用于\"公子哥儿\"指不学无术的年轻人", false, "受限", "语义扩大"
+            ],
+            ["远水不救近火", "宦", "实词", "huàn", "动词，做官、任职", "动词，出外做官、供职：宦游四方、仕宦之家", "",
+                "鲁穆公使众公子或宦于晋", "", "“宦” 的 “做官” 义没有变化，但现代口语不用，仅见于 “宦官”“宦海” 等书面词语。", "", false,
+                "频率下降", ""
+            ],
+            ["远水不救近火", "假", "实词", "jiǎ", "动词，借、借助", "书面/成语中保留\"借\"义：假公济私、狐假虎威、假手于人、不假思索", "",
+                "假人于越而救溺子", "语义转移", "古以\"借\"为常用义，今\"虚假\"成为核心义，本义主要留存于固定成语", "", false, "频率下降", "语义转移"
+            ],
+            ["远水不救近火", "溺", "实词", "nì", "动词，溺水、淹没", "动词，溺水、沉迷：溺水、沉溺", "", "假人于越而救溺子", "", "", "",
+                false, "稳定", ""
+            ],
+            ["远水不救近火", "失", "实词", "shī", "动词，发生意外、遭遇灾祸", "发生意外：失火、飞机失事", "", "失火而取水于海", "",
+                "“失” 的 “遭遇意外” 义仍常用（如 “失事”“失火”），同时扩展出 “遗失”“失败”“失误” 等义。", "", false, "稳定", ""
+            ],
+            ["远水不救近火", "患", "实词", "huàn", "担忧", "1.忧虑：～得～失。忧～。2.灾祸：～难。祸～。隐～。防～未然。3.害病：～病。～者。",
+                "", "鲁患其不救乎", "语义转移", "“患” 的 “担忧” 义使用频率相比古代汉语有所下降，常用（如 “忧患”“患得患失”），现代“患病”义更常用，语义转移。",
+                "", false, "频率下降", "语义转移"
+            ],
+            ["远水不救近火", "于", "虚词", "yú", "介词，在、从；古句式常与状语后置句式关联：动词+于+宾语", "介词，在、从；现代语序：在/从+宾语+动词：我生于四川内江",
+                "", "或宦于晋、或宦于荆、假人于越、取水于海", "", "“于” 作介词（在 / 从）书面语中常见（如 “关于”“对于”“属于”），但口语不单独使用 “于”。",
+                "", false, "频率下降", ""
+            ],
+            ["远水不救近火", "而", "虚词", "ér", "连词，表承接，连接先后动作", "连词表承接，用法沿用至今：取而代之、闻风而动", "",
+                "假人于越而救溺子；失火而取水于海", "", "语法功能古今完全一致，书面语保留", "", false, "频率下降", ""
+            ],
+            ["远水不救近火", "而", "虚词", "ér", "连词，表转折，译为\"可是、却\"", "连词表转折，用法沿用至今：华而不实、忙而不乱", "",
+                "今晋与荆虽强，而齐近", "", "语法功能古今完全一致，书面语保留", "", false, "频率下降", ""
+            ],
+            ["远水不救近火", "虽……必……", "凝固词组", "", "“虽”在此处表假设让步，译为“即使”；“必”表肯定推断，译为“一定”；整体为“即使……，也一定……”",
+                "现代汉语中不再用“虽……必……”，一般用“即使……也……”“就算……也……”：即使他跑得再快，也赶不上这班火车", "", "越人虽善游，子必不生矣；海水虽多，火必不灭矣",
+                "凝固词组",
+                "上古汉语“虽”有两种用法：1.事实让步（陈述已存事实）→译“虽然”；2.假设让步（虚拟举例、打比方）→译“即使/就算”。本课两句是虚拟假设，属于假设让步，故译“即使”。“必”在文言中表必然推断，现代汉语中多由“也”承接转折，不再用“必”搭配“虽”。",
+                "", false, "受限", "凝固词组"
+            ],
+            ["远水不救近火", "远水不救近火（俗语）", "文化", "", "", "", "", "失火而取水于海，海水虽多，火必不灭矣", "文化",
+                "", "这则俗语（寓言）通过“越人善游难救落水子、海水再多难灭近火”的比喻，点明了远处的帮助解决不了眼前的急迫需要，文中体现了高超的沟通和劝谏艺术，讽刺了不切实际、舍近求远的做法。",
+                true, "", "文化"
+            ],
+            // ===== 拔杨容易栽杨难 =====
+            ["拔杨容易栽杨难", "贵", "实词", "guì", "本义指\"价钱高\"，文中指引申义地位高、受君主器重",
+                "1.价钱高，与\"贱\"相对：～贱（ａ．价格的高低；ｂ．指人的地位高低；ｃ．方言，无论如何）。春雨～如油。2.指地位高：～族。～戚。～望（尊贵的门第和声望）。3.敬辞，称与对方有关的事物：～国。～庚（请问别人年龄）。～姓。～干（gàn ）（问人要做什么）。4.特别好的，重要的：～重（zhòng ）。珍～。尊～。民为～。",
+                "", "陈轸贵于魏王", "", "", "", false, "稳定", ""
+            ],
+            ["拔杨容易栽杨难", "善", "实词", "shàn", "动词，善待、交好、笼络", "1.心地仁爱，品质淳厚：～良。～心。～举。～事。～人。～男信女。慈～。友～。亲～。和～。2.好的行为、品质：行～。惩恶扬～。3.好好地：～待。～罢甘休。",
+                "", "子必善左右", "", "", "", false, "稳定", ""
+            ],
+            ["拔杨容易栽杨难", "左右", "实词", "zuǒ yòu", "名词，身边近臣、侍从", "1.方位名词，左边和右：左右两边、左右为难。2.代指身旁的人：左右手（比喻得力的助手）。3.大约：十岁左右。",
+                "", "子必善左右", "语义转移", "课文中“左右”指身边近臣/侍从。现代常用义是方位词“左边和右边”或表约数“十岁左右”，词义已转移。", "",
+                false, "频率下降", "语义转移"
+            ],
+            ["拔杨容易栽杨难", "树", "实词", "shù", "动词，栽种、种植", "1.木本植物的通称：～木。～林。～大根深（喻势力大，根基牢固）。2.种植，培育：～艺（“艺”，种植）。十年～木，百年～人。～荆棘得刺，～桃李得荫。3.立，建立：～立。～敌。",
+                "", "横树之即生，倒树之即生", "语义转移", "古以\"栽种\"为常用动词义，现代主流作名词指树木，动词义保留在书面/固定搭配中", "", false,
+                "频率下降", "语义转移"
+            ],
+            ["拔杨容易栽杨难", "使", "实词", "shǐ", "动词，让、派遣、假使", "1.用：～用。～劲。～役。～力。～钱。2.派，差遣：～唤。～命。～女。3.让，令，叫：迫～。",
+                "", "然使十人树之而一人拔之", "", "核心词义与用法古今基本一致", "", false, "稳定", ""
+            ],
+            ["拔杨容易栽杨难", "工", "实词", "gōng", "动词/形容词，擅长、善于", "1.细致，精巧：～巧。～整。～笔。2.善于，长于：～书善画。～于心计。3.个人不占有生产资料，依靠工资收入为生的劳动者：～人。～人阶级。",
+                "", "子虽工自树于王", "语义转移", "“工”字，本义是一种有刃的工具，“擅长、善于”义语义保留，现在常表示“工人、工作”等含义", "", false,
+                "频率下降", "语义转移"
+            ],
+            ["拔杨容易栽杨难", "胜", "实词", "shèng", "动词，抵挡、胜过、战胜", "动词，胜利、超过、承受：胜-01 动词，胜利、超过、承受", "",
+                "而不胜一人者", "", "核心词义古今一致，用法延续", "", false, "稳定", ""
+            ],
+            ["拔杨容易栽杨难", "毋", "虚词", "wú", "否定副词，没有、不", "仅留存于文言、成语中，口语用\"不、没有\"替代：少安毋躁", "",
+                "则毋生杨矣", "", "“毋” 相当于 “不 / 不要”，现代口语不用，仅保留在 “毋庸置疑” 等成语中。",
+                "1.不：最通用，使用范围最广。2.非：专门否定判断。3.弗：近似“不”，只否定及物动词。4.未：否定动作还没发生。5.勿/毋：表劝阻、禁止。", false,
+                "频率下降", ""
+            ],
+            ["拔杨容易栽杨难", "而", "虚词", "ér", "连词，表承接", "连词表承接，用法沿用：取而代之、闻风而动", "", "折而树之又生", "",
+                "语法功能古今一致", "", false, "频率下降", ""
+            ],
+            ["拔杨容易栽杨难", "而", "虚词", "ér", "连词，表转折", "连词表转折，用法沿用：肥而不腻、忙而不乱、华而不实",
+                "", "树之难而去之易也/子虽工自树于王，而欲去之者众/然使十人树之而一人拔之", "", "语法功能古今一致", "", false, "频率下降", ""
+            ],
+            ["拔杨容易栽杨难", "虽……必……", "凝固词组", "", "“虽”在此处是基于事实的让步连词，译“虽然”；必：情态副词，表肯定推断，译“一定、必定”。整句表：“虽然......必定......”",
+                "现代汉语改用：虽然……但也一定……：他虽然能力出众，但也一定会面临挑战", "", "子虽工自树于王……子必危矣", "凝固词组", "“虽……必……”该句式基本仅存在于文言文中",
+                "", false, "受限", "凝固词组"
+            ],
+            ["拔杨容易栽杨难", "惠子", "文化", "huì zǐ", "", "", "", "", "文化",
+                "",
+                "惠施（约前370—约前310），战国中期宋国人，政治家、思想家、哲学家，名家学派创始人，庄子挚友。拓展：他认为万物的“同”与“异”是相对的，没有绝对的界限。从“同”的角度看，万物都可以找到共性（如“天地一体”）；从“异”的角度看，万物又都存在差异（如“天与地卑，山与泽平”，打破高低贵贱的绝对认知）。惠子与庄子濠梁之辩：庄子和惠子在濠水的桥上游玩。庄子说：“白鲦鱼在水里游得悠闲自在，这是鱼的快乐啊。”惠子反驳：“你不是鱼，怎么知道鱼是快乐的？”庄子反问：“你不是我，怎么知道我不知道鱼的快乐？”惠子说：“我不是你，固然不知道你；但你本来就不是鱼，你不知道鱼的快乐，这是确定无疑的！”庄子说：“让我们回到最初的话题。你问‘你怎么知道鱼快乐’，就说明你已经承认我知道鱼快乐，只是在问我是从哪里知道的——我就是在濠水的桥上知道的呀。”",
+                true, "", "文化"
+            ],
+            ["拔杨容易栽杨难", "拔杨容易栽杨难", "文化", "",
+                "以栽杨、拔杨为喻，点明立身成事艰难、损毁功业容易；劝诫身居高位者要善待身边之人，提防他人构陷，警醒身处险境。同时，它既可以指事业、基业的建设，也可以指品德、信任的养成，提醒我们要懂得珍惜成果、防微杜渐，不可因一时的懈怠或冲动，毁掉长期积累的心血。",
+                "", "", "", "文化",
+                "", "以栽杨、拔杨为喻，点明立身成事艰难、损毁功业容易；劝诫身居高位者要善待身边之人，提防他人构陷，警醒身处险境。同时，它既可以指事业、基业的建设，也可以指品德、信任的养成，提醒我们要懂得珍惜成果、防微杜渐，不可因一时的懈怠或冲动，毁掉长期积累的心血。",
+                true, "", "文化"
+            ],
+            // ===== 为学 =====
+            ["为学", "为", "实词", "wéi", "动词，做、从事", "1.做，行，做事：～人。～时。～难。不～己甚（不做得太过分）。2.当做，认做：以～。认～。习以～常。3.变成：成～。4.是：十两～一斤。",
+                "", "为之，则难者亦易矣", "", "", "", false, "稳定", ""
+            ],
+            ["为学", "鄙", "实词", "bǐ", "名词，边境、边远的地方", "1.郊野之处，边远的地方：边～。2.轻蔑，看不起：～视。～夷。～弃。～薄。", "",
+                "蜀之鄙有二僧", "语义转移", "课文中“鄙”是名词“边远的地方”。该义仅存于“边鄙”等极少数书面词中。现代“鄙”常用义是“鄙视/鄙陋”，词义已转移。",
+                "", false, "受限", "语义转移"
+            ],
+            ["为学", "语", "实词", "yù", "动词，告诉、对……说", "现代汉语常用读音“yǔ”：1.话：～言。汉～。英～。～录。～汇。～重心长。2.代替语言的动作：手～。旗～。3.说：细～。低～。",
+                "语重心长、自言自语", "贫者语于富者曰", "语义转移",
+                "课文中“语（yù）”是动词“告诉”。该义仅在古文语境中出现。现代“语”常读作“yǔ”，常用义是名词“语言/话语”（如“语文”“成语”），词义中心已转移。",
+                "", false, "受限", "语义转移"
+            ],
+            ["为学", "恃", "实词", "shì", "动词，依靠、凭借", "依赖，仗着：仗～。有～无恐。～才傲物。", "", "子何恃而往", "",
+                "“恃” 的 “依靠” 义地位没有变化，仍是它自己的核心常用意义。但“恃”较为正式，现代口语基本不用，主要保留在 “有恃无恐”“恃才傲物” 等成语中。口语常用 “靠 / 依靠”。",
+                "", false, "稳定", ""
+            ],
+            ["为学", "越", "实词", "yuè", "“越”指及、到。“越明年”，文言时间介词高频用法，在这里指到了第二年。", "1.度过，超出：～过。～冬。～级。～轨。～权。～境。～位。～狱。～俎代庖。2.表示程度加深：～发（更加）。～加。～快～好。",
+                "", "越明年，贫者自南海还", "语义转移", "“越”指及、到，是古汉语特有时间介词用法。现代汉语这个意义基本消失。", "", false,
+                "受限", "语义转移"
+            ],
+            ["为学", "去", "实词", "qù", "动词，距离（空间相隔）", "核心义项转移，现代以\"离开/前往\"为主，\"距离\"义仅存于书面：相去甚远",
+                "", "西蜀之去南海", "语义转移", "古义\"距离\"在现代收窄，口语中被\"离/距离\"替代", "", false, "受限", "语义转移"
+            ],
+            ["为学", "还", "实词", "huán", "动词，返回、回来", "1.回到原处或恢复原状：～乡。～俗。衣锦～乡。返老～童。2.回报别人对自己的行动。～手。～击。以眼～眼。以牙～牙。3.偿付：归～。偿～。～本。原物奉～。",
+                "", "贫者自南海还", "", "“还” 的 “返回” 义仍常用，如 “还乡”“归还”“偿还”。",
+                "hái：依然，仍然；更加；再，又；尚，勉强过得去；尚且。", false, "稳定", ""
+            ],
+            ["为学", "告", "实词", "gào", "动词，告诉、告知", "核心义项古今一致，口语中仍常用：告诉、告知、报告", "", "以告富者", "",
+                "核心义项古今完全一致，无明显变化", "", false, "稳定", ""
+            ],
+            ["为学", "之", "虚词", "zhī", "代词，指代前文提到的人或事物", "口语用\"它/这件事\"替代，书面语/成语中保留代词用法：求之不得、置之不理",
+                "", "为之，则难者亦易矣", "", "代词功能传承，口语改用\"它/这\"，书面语保留", "", false, "频率下降", ""
+            ],
+            ["为学", "之", "虚词", "zhī", "助词，取消句子独立性，无实义", "现代汉语无完全对应结构，口语中消失，仅书面文言保留：大道之行也（文言）",
+                "", "人之为学有难易乎", "", "古汉语特有语法功能，现代口语消失，仅书面保留", "", false, "受限", ""
+            ],
+            ["为学", "之", "虚词", "zhī", "动词，到、前往", "动词用法现代完全消失，改用\"到/去/前往\"：现代汉语无此用法，需译为\"我想要到南海去\"",
+                "", "吾欲之南海", "", "动词义项在现代汉语中基本完全消失，仅保留虚词用法", "", false, "受限", ""
+            ],
+            ["为学", "之", "虚词", "zhī", "结构助词，的", "现代汉语用\"的\"承担相同功能，书面语仍保留\"之\"：山林之美、天地之大", "",
+                "蜀之鄙有二僧", "", "\"之\"作结构助词相当于\"的\"，口语用\"的\"，书面语保留（如\"为学之道\"\"求知之心\"）。", "", false,
+                "频率下降", ""
+            ],
+            ["为学", "乎", "虚词", "hū", "句末语气助词，表疑问，译为\"吗\"", "现代汉语用\"吗/呢\"替代，书面语偶见：不亦乐乎、事无难易乎？",
+                "", "天下事有难易乎", "", "疑问语气功能传承，口语改用\"吗/呢\"，书面保留于固定短语", "", false, "受限", ""
+            ],
+            ["为学", "矣", "虚词", "yǐ", "句末语气助词，表肯定/已然，译为\"了\"", "现代汉语用\"了/啦\"替代，仅存于书面文言/成语：悔之晚矣、由来久矣",
+                "", "为之，则难者亦易矣", "", "“矣” 表示陈述 / 完成语气，相当于 “了 / 啦”，现代口语不用，仅出现在文言引用中。", "",
+                false, "受限", ""
+            ],
+            ["为学", "焉", "虚词", "yān", "句末语气助词，同时兼具指代作用。那里（代指南海），可译作“了”“呢”，也可直接不译。", "仅存于书面文言/成语：心不在焉、语焉不详",
+                "", "僧富者不能至而贫者至焉", "", "“焉” 在此处作句末语气词，补充语气，现代口语不使用，仅在成语中保留。", "", false, "受限", ""
+            ],
+            ["为学", "哉", "虚词", "zāi", "句末语气助词，表反问/感叹，译为\"呢/啊\"", "现代汉语用\"吗/呢/啊\"替代，仅存于书面文言/成语：善哉、岂有此理哉？",
+                "", "顾不如蜀鄙之僧哉", "", "“哉” 表感叹或反问语气，译为 “呢 / 啊”，现代口语不用，仅在文言引用 “壮哉”“善哉” 中出现。",
+                "", false, "受限", ""
+            ],
+            ["为学", "也", "虚词", "yě", "句末语气助词，表判断/陈述语气，无实义", "现代汉语口语、普通书面语普遍已不用，保留在古文里：非我也，兵也（文言）",
+                "", "不知几千里也", "", "“也” 作句末语气词表判断 / 陈述，现代口语、普通书面语普遍已不用，保留在古文里。", "", false, "受限",
+                ""
+            ],
+            ["为学", "以", "虚词", "yǐ", "介词，把、拿", "介词功能书面语中保留，口语多用\"把/拿\"替代：以物换物、以礼相待", "",
+                "以告富者", "", "“以” 作介词相当于 “把 / 拿 / 用”，书面语中保留，口语多用 “把 / 拿”。", "", false, "频率下降",
+                ""
+            ],
+            ["为学", "而", "虚词", "ér", "连词，表转折，译为\"但是、却\"", "现代汉语用\"但是/却\"替代，书面语仍保留：不欢而散、肥而不腻",
+                "", "僧富者不能至而贫者至焉", "", "转折连词功能古今一致，口语多用\"但是/却\"替代", "", false, "频率下降", ""
+            ],
+            ["为学", "何", "虚词", "hé", "疑问代词，什么", "核心义项“什么”，古今一致，口语中仍常用：什么、为何、何去何从", "",
+                "子何恃而往", "", "“何” 的疑问代词 “什么” 义保留在 “何必”“何况”“为何” 等词中，但口语不单用 “何”，多说 “什么”。",
+                "", false, "频率下降", ""
+            ],
+            ["为学", "于", "虚词", "yú", "介词，对、向", "介词功能古今一致，书面语中仍常用：对于、关于、于公于私", "", "贫者语于富者曰",
+                "", "\"于\"作介词表\"对/向\"，书面语中常见（如\"对于\"\"关于\"\"属于\"），口语不单独使用\"于\"。", "", false,
+                "频率下降", ""
+            ],
+            ["为学", "顾", "虚词", "gù", "副词，反而、难道（表反问）", "反问副词义已消失，现代以动词\"看/回头看/照顾\"为主", "",
+                "顾不如蜀鄙之僧哉", "", "课文中“顾”是副词“反而/难道”。该义现代基本不用。现代“顾”常用义是动词“看/照顾/考虑”（如“顾客”“照顾”）",
+                "", false, "受限", ""
+            ],
+
+            ["为学", "为学（彭端淑）", "文化", "", "彭端淑（约1699-1779），清代文学家。字乐斋，四川人。雍正年间进士，曾任吏部郎中、顺天乡试同考官等职。辞官后回到四川，在锦江书院讲学。著有《白鹤堂集》。",
+                "", "", "（全文出处）", "文化", "", "彭端淑（约1699-1779），清代文学家。字乐斋，四川人。雍正年间进士，曾任吏部郎中、顺天乡试同考官等职。辞官后回到四川，在锦江书院讲学。著有《白鹤堂集》。",
+                true, "", "文化"
+            ],
+            ["为学", "文章主题", "文化", "",
+                "《为学》，原题目是《为学一首示子侄》。这篇议论性文章是长辈对晚辈的指教与劝导。以事喻理，通过穷和尚与富和尚前往南海的故事，阐明有志者事竟成，学业、理想能否达成，不在于天资与物质条件，而在于是否拥有坚定志向与踏实行动",
+                "", "", "（全文）", "文化", "",
+                "《为学》，原题目是《为学一首示子侄》。这篇议论性文章是长辈对晚辈的指教与劝导。以事喻理，通过穷和尚与富和尚前往南海的故事，阐明有志者事竟成，学业、理想能否达成，不在于天资与物质条件，而在于是否拥有坚定志向与踏实行动",
+                true, "", "文化"
+            ],
+            // ===== 爱莲说 =====
+            ["爱莲说", "植", "实词", "zhí", "动词，竖立", "1.栽种：种～。培～。栽～。～树。2.树立：～立。～志（立志）。3.戮住，竖起：～耳。生物的一大类，谷类、花草、树木等的统称：～物。～被。～保。",
+                "", "亭亭净植", "语义转移", "古义为动作义，现代主要作名词指草木，动词用法仅留存于书面语。", "", false, "受限", "语义转移"
+            ],
+            ["爱莲说", "蔓", "实词", "màn", "名词作动词，生枝蔓", "名词，藤蔓：瓜蔓、藤蔓", "", "不蔓不枝", "词类活用・名作动",
+                "文中活用为动词，日常使用以名词为主", "", false, "", "词类活用・名作动"
+            ],
+            ["爱莲说", "枝", "实词", "zhī", "名词作动词，长枝节", "名词，树枝、枝条：枝叶、枝干", "", "不蔓不枝", "词类活用・名作动",
+                "文中活用为动词，日常使用以名词为主", "", false, "", "词类活用・名作动"
+            ],
+            ["爱莲说", "远", "实词", "yuǎn", "形容词作动词，远播", "形容词，距离长：远方、遥远", "", "香远益清", "词类活用・形作动",
+                "文中活用为动词，日常使用以形容词为主", "", false, "", "词类活用・形作动"
+            ],
+            ["爱莲说", "蕃", "实词", "fán", "形容词，繁多、很多", "繁多、茂盛：蕃茂、蕃盛", "", "可爱者甚蕃", "",
+                "本义“草木繁茂”，仍是自己的常用义项，文中引申为数量多，古今语义一脉相承，书面仍可使用，但现代不常用该字。", "", false, "受限", ""
+            ],
+            ["爱莲说", "鲜", "实词", "xiǎn", "形容词，稀少、很少", "数量少：鲜为人知", "", "陶后鲜有闻", "",
+                "该读音表“稀少”的义项，仍是自己的常用义项，当前常用于成语、固定词语等。“～为人知”", "", false, "稳定", ""
+            ],
+            ["爱莲说", "濯", "实词", "zhuó", "动词，洗涤", "清洗、洗涤：濯洗", "", "濯清涟而不妖", "", "本义洗涤，仍是自己的常用义项",
+                "", false, "稳定", ""
+            ],
+            ["爱莲说", "亵", "实词", "xiè", "动词，亲近而不庄重、轻慢玩弄", "轻慢、轻浮：亵渎", "", "可远观而不可亵玩焉", "",
+                "古义轻慢亲近的用法，仍是自己的常用义项，现代多固化在“亵渎”等书面词语，口语极少单用", "", false, "稳定", ""
+            ],
+            ["爱莲说", "宜", "虚词", "yí", "副词，应当", "1.适合，适当：～人。～于。合～。权～。适～。相～。2.应该，应当：事不～迟。",
+                "", "宜乎众矣", "", "古义多作副词表理应如此，现代以形容词用法为主", "", false, "频率下降", ""
+            ],
+            ["爱莲说", "者", "虚词", "zhě", "代词，指代……的人/事物（……的花）", "现代汉语多用“……的”，极少单用“者”：读者、作者",
+                "", "可爱者甚蕃 / 花之隐逸者也 / 花之富贵者也 / 花之君子者也 / 同予者何人", "", "“者”指代“……的人/事物”，现代多用“……的”，极少单用“者”。",
+                "【拓展】……者……也\n古汉语标准判断句式，“者”表停顿，“也”表判断。→ 与第7课《马说》判断句关联\n1.\u3000陈胜者，阳城人也。\n译：陈胜是阳城人。\n2.\u3000廉颇者，赵之良将也。\n译：廉颇是赵国的优秀将领。", false, "频率下降", ""
+            ],
+            ["爱莲说", "予", "虚词", "yú", "第一人称代词，我", "现代用“我”：无通用单用例", "", "同予者何人", "",
+                "文言第一人称代词用法，现代汉语口语完全不用，现代汉语常表示“给予”义，表人称用法仅见于古文仿古文本。", "", false, "受限", ""
+            ],
+            ["爱莲说", "而", "虚词", "ér", "转折连词，却、但是", "现代用“但是、却”：反而、然而", "", "出淤泥而不染 / 濯清涟而不妖 / 可远观而不可亵玩焉",
+                "", "三处用法完全一致，均表转折；文言单用“而”表转折，现代通用语体不单独使用，主要在一些词语中常用。", "", false, "频率下降", ""
+            ],
+            ["爱莲说", "矣", "虚词", "yǐ", "句末语气助词，表肯定感叹，译作“了”", "现代汉语用句尾“了”：无单字使用案例", "", "宜乎众矣",
+                "", "句末感叹助词，现代用“了”。", "", false, "受限", ""
+            ],
+            ["爱莲说", "焉", "虚词", "yān", "句末语气助词，舒缓语气，可不译", "无对应单字：无", "", "可远观而不可亵玩焉", "",
+                "仅作舒缓语气助词，无实义，现代无对应用法。", "", false, "受限", ""
+            ],
+            ["爱莲说", "说", "文化", "/", "古代文体，可叙事、说明、发表议论，如《马说》《捕蛇者说》。现代归入议论文、杂文范畴，无专用对应文体。", "",
+                "", "篇目《爱莲说》", "文化", "", "古代文体，可叙事、说明、发表议论，如《马说》《捕蛇者说》。现代归入议论文、杂文范畴，无专用对应文体。", true,
+                "", "文化"
+            ],
+            ["爱莲说", "周敦颐", "文化", "zhōu dūn yí", "", "", "", "（全文作者）", "文化",
+                "", "周敦颐（1017-1073），又名周元皓，字茂叔，原名周敦实，号濂溪，世称濂溪先生，谥号“元公”。道州营道(今湖南道县)人。是宋朝儒家理学思想的开山鼻祖，文学家、哲学家。著有《周元公集》。",
+                true, "", "文化"
+            ],
+            ["爱莲说", "莲（别称与象征）", "文化", "lián", "", "", "", "（全文）", "文化",
+                "", "莲是荷花的别称，文中象征君子高洁的品格。莲花、莲荷，常喻指品行高尚之人、象征含义沿用至今，为经典文学意象", true, "", "文化"
+            ],
+            ["爱莲说", "托物言志", "文化", "",
+                "托物言志就是借助某一种事物的外形、品性来寄托自己的理想、品格与追求，《爱莲说》中周敦颐借莲花出淤泥却洁净正直的特点，抒发自己不慕名利、洁身自好的志趣；如今写作也可以借用各类事物表达内心志向，比如梅花象征不畏艰难、竹子代表正直谦逊、松柏寓意坚韧不屈、兰花代表淡泊高雅、小草象征顽强不屈，路灯、蜡烛则用来赞美无私奉献的品格。",
+                "", "", "（全文）", "文化", "",
+                "托物言志就是借助某一种事物的外形、品性来寄托自己的理想、品格与追求，《爱莲说》中周敦颐借莲花出淤泥却洁净正直的特点，抒发自己不慕名利、洁身自好的志趣；如今写作也可以借用各类事物表达内心志向，比如梅花象征不畏艰难、竹子代表正直谦逊、松柏寓意坚韧不屈、兰花代表淡泊高雅、小草象征顽强不屈，路灯、蜡烛则用来赞美无私奉献的品格。",
+                true, "", "文化"
+            ],
+            ["爱莲说", "判断句", "句式", "", "判断句，'……者……也'句式，\"者\"表停顿，\"也\"表判断", "现代汉语用\"……是……\"结构替代", "", "花之隐逸者也 / 花之富贵者也 / 花之君子者也", "判断句", "\"……者……也\"是古代汉语的标准判断句式。现代汉语用\"……是……\"表判断。拓展：1.\u3000陈胜者，阳城人也。译：陈胜是阳城人。2.\u3000廉颇者，赵之良将也。译：廉颇是赵国的优秀将领。", "", false, "受限", "判断句"
+            ],
+            // ===== 马说 =====
+            ["马说", "奴隶", "实词", "nú lì", "名词，奴仆", "名词，为奴隶主劳动而没有人身自由的人：奴隶社会、奴隶制度", "",
+                "祗辱于奴隶人之手", "", "古今“奴隶”的核心义项没有改变，仍指没有人身自由、被他人役使的人。只是如今现实中已基本不存在传统意义上的奴隶，这个词现在更多用于指代奴隶制度、奴隶社会这类书面/文言场景，日常口语里很少使用。",
+                "", false, "频率下降", ""
+            ],
+            ["马说", "等", "实词", "děng", "动词，等同、一样", "1.数量、程度相同，或地位一般高：相～。平～。～于。～同。～值。～量齐观。",
+                "", "且欲与常马等不可得", "", "古义表等同的意义在现代也是常用义之一，同时今义还表等候，以及复数列举", "", false, "稳定", ""
+            ],
+            ["马说", "策", "实词", "cè", "动词，用马鞭驱赶", "名词，马鞭；策马奔腾、马鞭、鞭策", "", "策之不以其道", "词类活用・名作动",
+                "此处\"策\"由名词活用为动词，表\"用马鞭驱赶\"；名词本义（马鞭）古今一致", "", false, "", "词类活用・名作动"
+            ],
+            ["马说", "食", "实词", "shí", "动词，吃", "动词，吃：食肉、食欲", "", "一食或尽粟一石", "", "动词义古今一致，用法延续",
+                "", false, "稳定", ""
+            ],
+            ["马说", "食", "实词", "sì", "通假字，同\"饲\"，喂", "1.吃：～肉。～欲。2.吃的东西：～品。粮～。零～。丰衣足～。", "",
+                "食马者不知其能千里而食也", "通假字", "通假用法古今词义一致，\"饲\"为后起专用字", "", false, "", "通假字"
+            ],
+            ["马说", "辱", "实词", "rǔ", "形容词作动词，受屈辱", "1.羞耻：羞～。耻～。2.使受到羞耻：～骂。侮～。折～。", "",
+                "祗辱于奴隶人之手", "词类活用・形作动", "文中活用为动词，日常以名词/动词为主", "", false, "", "词类活用・形作动"
+            ],
+            ["马说", "尽", "实词", "jìn", "形容词作动词，吃尽", "动词，完、达到顶点：尽力而为、尽善尽美", "", "一食或尽粟一石",
+                "词类活用・形作动", "文中活用为动词，日常以动词为主", "", false, "", "词类活用・形作动"
+            ],
+            ["马说", "尽", "实词", "jìn", "形容词的使动用法，使……尽、竭尽", "动词，竭尽、用完：竭尽所能、尽忠职守", "",
+                "食之不能尽其材", "词类活用・使动", "文中为使动用法，日常以普通动词为主", "", false, "", "词类活用・使动"
+            ],
+            ["马说", "见", "实词", "xiàn", "通假字，同\"现\"，表现", "看到：看～。罕～。～微知著。～义勇为。", "", "才美不外见",
+                "通假字", "通假用法古今词义一致，\"现\"为后起字", "", false, "", "通假字"
+            ],
+            ["马说", "材", "实词", "cái", "通假字，同\"才\"，才能、才干", "1.木料，泛指一切原料或资料：～料。教（jiào ）～。素～。题～。就地取～。2.能力，资质：～干（gàn ）。大～小用。因～施教（jiào）。",
+                "", "食之不能尽其材", "通假字", "通假用法古今词义一致，\"才\"为专用字", "", false, "", "通假字"
+            ],
+            ["马说", "邪", "实词", "yé", "通假字，同\"耶\"，表示疑问", "邪xié: 不正当，不正派：～恶（è）。～念。", "",
+                "其真无马邪", "通假字", "通假用法古今词义一致，\"耶\"为后起字", "", false, "", "通假字"
+            ],
+            ["马说", "其", "虚词", "qí", "代词，指代前文提到的人或事物", "代词，它、他/她/它的：其貌不扬、其势汹汹", "", "安求其能千里也",
+                "", "“其” 代指的意义，书面留存，较为常用，但是现代基本不单独使用。", "", false, "频率下降", ""
+            ],
+            ["马说", "其", "虚词", "qí", "语气词，表示反问语气，岂、难道", "语气词，表反问（书面语）：其奈我何？", "", "其真无马邪",
+                "", "“其” 表难道，基本仅文言使用。", "", false, "受限", ""
+            ],
+            ["马说", "其", "虚词", "qí", "语气词，表示推测语气，恐怕", "很少使用", "", "其真不知马也", "", "“其” 表恐怕，现代很少使用。",
+                "", false, "受限", ""
+            ],
+            ["马说", "之", "虚词", "zhī", "代词，它（代指千里马）", "代词，它、他/她：取之不尽、用之不竭", "", "策之不以其道",
+                "", "\"之\"作代词相当于\"它\"（此处指代千里马），口语用\"它\"替代，书面语和成语中保留（如\"取而代之\"）。", "", false,
+                "频率下降", ""
+            ],
+            ["马说", "之", "虚词", "zhī", "结构助词，的", "结构助词，的：我的书、美丽的花", "", "祗辱于奴隶人之手", "",
+                "\"之\"作结构助词相当于\"的\"，口语用\"的\"，书面语中保留（如\"千里马之才\"\"不世之才\"）。", "", false, "频率下降",
+                ""
+            ],
+            ["马说", "之", "虚词", "zhī", "定语后置的标志，无实义", "无对应口语用法，仅留存于文言句式", "", "马之千里者", "",
+                "\"之\"作定语后置标志，是古汉语特有的语法标记功能。现代汉语定语一律前置，无需任何标记词，该用法在现代汉语中已完全消失，仅见于文言文阅读语境。",
+                "", false, "受限", "定语后置"
+            ],
+            ["马说", "之", "虚词", "zhī", "文言凑音节音节助词，不译", "无对应口语用法，仅用于书面/文言凑音节", "", "鸣之而不能通其意",
+                "", "\"之\"作凑足音节的助词，无任何实际意义，仅用于调节句子节奏与音律，是古汉语特有的音节补足手段。现代汉语句子结构较为灵活，不依赖虚词凑音节，该用法在现代汉语中已完全消失。",
+                "", false, "受限", ""
+            ],
+            ["马说", "或", "虚词", "huò", "副词，有时", "1.副词，或许、或者：或许会下雨、或者你先走。2.有时：或早或晚、或多或少。",
+                "", "一食或尽粟一石", "", "文言文中“或”常表示“有的人”（或曰：“此为何物？”译：有的人说：“这是什么东西？”）以及“有时”如本文“一食或尽粟一石”。但在现代汉语中，“或”的常用义为表示选择，如或者、或许。",
+                "", false, "频率下降", ""
+            ],
+            ["马说", "是", "虚词", "shì", "代词，这", "判断动词，与\"否\"相对：是非对错、他是老师", "", "是马也", "",
+                "古义为指示代词，今义为判断动词。", "", false, "受限", ""
+            ],
+            ["马说", "安", "虚词", "ān", "疑问副词，怎么", "现代核心义为安全、平安（形容词），疑问副词用法仅存文言书面", "", "安求其能千里也",
+                "", "古义表反问，今义表状态“安全”", "", false, "受限", ""
+            ],
+            ["马说", "倒装句", "句式", "", "倒装句，状语后置或定语后置；正常语序：\"于奴隶人之手祗辱，于槽枥之间骈死\"；\"千里马者\"",
+                "现代汉语状语/定语置于动词/名词前，无此类后置用法", "", "祗辱于奴隶人之手，骈死于槽枥之间\n马之千里者", "倒装句", "古汉语特殊语序，现代汉语不这样说，现代状语前置。", "",
+                false, "受限", "倒装句"
+            ],
+
+            ["马说", "省略句", "句式", "", "省略句，省略主语\"食马者\"", "现代汉语省略句多省略主语，用法类似：（他）去了学校", "",
+                "策之不以其道", "省略句", "古今都可省略主语，古文更频繁。", "", false, "稳定", "省略句"
+            ],
+            ["马说", "判断句", "句式", "", "判断句，\"……也\"表判断", "现代汉语多用\"是\"表判断，\"也\"仅留存于书面语", "",
+                "其真不知马也！", "判断句", "判断标志用法古今一致，现代口语多用\"是\"替代", "", false, "受限", "判断句"
+            ],
+            ["马说", "说", "文化", "", "", "", "", "标题《马说》", "文化",
+                "", "古代文体，可叙事、说明、发表议论，如《马说》《捕蛇者说》。现代归入议论文、杂文范畴，无专用对应文体。", true, "", "文化"
+            ],
+            ["马说", "韩愈", "文化", "hán yù", "", "", "", "《马说》作者", "文化",
+                "", "韩愈是中唐著名文学家，字退之，世称韩昌黎、韩吏部，谥号韩文公，位列唐宋八大家之首，与柳宗元并称“韩柳”，二人一同发起古文运动，反对空洞华丽的骈文，主张“文以载道”，追求文辞质朴、言之有物，苏轼评价他“文起八代之衰”，作品集为《昌黎先生集》；他推崇儒家思想，仕途坎坷、常年怀才不遇，擅长“说”这种托物说理的短篇议论文，课内代表作为《马说》，文中以千里马喻人才、伯乐喻明君、食马者喻昏庸统治者，批判当权者埋没贤才，抒发自身不被赏识的愤懑。",
+                true, "", "文化"
+            ],
+            ["马说", "《马说》主旨", "文化", "", "", "", "", "（全文）", "文化",
+                "", "借千里马不遇伯乐的遭遇，比喻贤才难遇明主，揭露统治者愚妄浅薄、不识人才的现象，寄托作者怀才不遇的愤懑", true, "", "文化"
+            ],
+            ["马说", "托物言志", "文化", "",
+                "借千里马、食马者的遭遇，寄托怀才不遇的感慨，揭露统治者不识人才的现象。现代仍广泛使用该写作手法，借事物抒怀、寓理。如：借梅花喻品格、借松柏表志向", "", "", "（全文）",
+                "文化", "",
+                "借千里马、食马者的遭遇，寄托怀才不遇的感慨，揭露统治者不识人才的现象。现代仍广泛使用该写作手法，借事物抒怀、寓理。如：借梅花喻品格、借松柏表志向", true, "",
+                "文化"
+            ],
+        ];
+
+        // ============================================================
+        // 2. 构建 entryMap
+        // ============================================================
+        const entryMap = {};
+
+        function getBaseLabel(label) {
+            return label.replace(/[（(][^）)]*[）)]/g, '').trim();
+        }
+
+        function normalizeBaseLabel(label, cat) {
+            let b = getBaseLabel(label);
+            if (b === '……者' || b === '……者（指代结构）' || b === '……者 指代结构') return '者';
+            if (b === '……者……也 判断句式') return '……者……也';
+            if (b === '虽……必…… 固定句式' || b === '虽……必…… 让步推断句式') return '虽……必……';
+            if (label.includes('托物言志') || label.includes('文章主题与写作手法')) return '托物言志';
+            if (b === '状语后置句' || b === '倒装句，状语后置' || b === '倒装句') return '倒装句';
+            if (b === '省略句，省略主语' || b === '省略句，省略宾语' || b.startsWith('省略句')) return '省略句';
+            return b;
+        }
+
+        function addEntry(lesson, label, category, pinyin, wenZhongYi, xianDaiDuiYing, example, sentence, relation,
+            yanBianShuoMing, note, isCulture, status, relationFull) {
+            const baseLabel = normalizeBaseLabel(label, category);
+            const key = lesson + '|' + baseLabel + '|' + category;
+            if (!entryMap[key]) {
+                entryMap[key] = {
+                    lesson: lesson,
+                    label: baseLabel,
+                    baseLabel: baseLabel,
+                    category: category,
+                    pinyin: pinyin || '',
+                    isCulture: isCulture || false,
+                    cultureNote: '',
+                    status: status || '',
+                    relationFull: relationFull || '',
+                    entries: []
+                };
+            }
+            if (isCulture) {
+                entryMap[key].cultureNote = note || yanBianShuoMing || '';
+            } else {
+                entryMap[key].entries.push({
+                    entryLabel: label,
+                    wenZhongYi: wenZhongYi || '',
+                    xianDaiDuiYing: xianDaiDuiYing || '',
+                    example: example || '',
+                    sentence: sentence || '',
+                    relation: relation || '',
+                    yanBianShuoMing: yanBianShuoMing || '',
+                    note: note || '',
+                    status: status || '',
+                    relationFull: relationFull || ''
+                });
+            }
+        }
+
+        allData.forEach(item => {
+            const [lesson, label, category, pinyin, wenZhongYi, xianDaiDuiYing, example, sentence, relation, yanBianShuoMing,
+                note, isCulture, status, relationFull
+            ] = item;
+            addEntry(lesson, label, category, pinyin, wenZhongYi, xianDaiDuiYing, example, sentence, relation,
+                yanBianShuoMing, note, isCulture, status, relationFull);
+        });
+
+        // ============================================================
+        // 3. 构建节点和边
+        // ============================================================
+        const rawNodes = [];
+        const nodeIdMap = {};
+
+        Object.keys(entryMap).forEach(key => {
+            const obj = entryMap[key];
+            const id = 'n_' + obj.lesson + '_' + obj.label + '_' + obj.category;
+            if (nodeIdMap[id]) {
+                nodeIdMap[id].entries = nodeIdMap[id].entries.concat(obj.entries);
+                return;
+            }
+            const node = {
+                id: id,
+                label: obj.label,
+                baseLabel: obj.baseLabel || obj.label,
+                category: obj.category,
+                lesson: obj.lesson,
+                text: obj.lesson,
+                pinyin: obj.pinyin || '',
+                isCulture: obj.isCulture || false,
+                cultureNote: obj.cultureNote || '',
+                status: obj.status || '',
+                relationFull: obj.relationFull || '',
+                entries: obj.entries || [],
+                isTextCenter: false,
+                isBlock: false
+            };
+            rawNodes.push(node);
+            nodeIdMap[id] = node;
+        });
+
+        const allLessonNames = ['精卫填海', '夸父逐日', '自相矛盾', '画蛇添足', '执长竿入城', '火烧裳尾', '远水不救近火', '拔杨容易栽杨难', '为学', '爱莲说',
+            '马说'
+        ];
+        const allCategories = ['实词', '虚词', '凝固词组', '句式', '文化'];
+
+        // 课文中心
+        const textCenterNodes = allLessonNames.map(ls => ({
+            id: 'n_' + ls,
+            label: '📄 ' + ls,
+            category: '课文中心',
+            lesson: ls,
+            text: ls,
+            isTextCenter: true,
+            isBlock: false,
+            entries: [],
+            cultureNote: ''
+        }));
+        rawNodes.push(...textCenterNodes);
+
+        // 板块
+        const blockNodes = [];
+        allLessonNames.forEach(ls => {
+            allCategories.forEach(cat => {
+                const id = 'n_' + cat + '_' + ls;
+                blockNodes.push({
+                    id: id,
+                    label: '📂 ' + cat,
+                    category: '板块',
+                    lesson: ls,
+                    text: ls,
+                    isTextCenter: false,
+                    isBlock: true,
+                    entries: [],
+                    cultureNote: ''
+                });
+            });
+        });
+        rawNodes.push(...blockNodes);
+
+        // 边
+        const rawEdges = [];
+
+        function addEdge(s, t) { rawEdges.push({ source: s, target: t }); }
+
+        function getBlockId(lesson, category) {
+            const map = {};
+            allLessonNames.forEach(ls => {
+                map[ls] = {};
+                allCategories.forEach(cat => {
+                    map[ls][cat] = 'n_' + cat + '_' + ls;
+                });
+            });
+            return map[lesson]?.[category] || '';
+        }
+
+        function getTextCenterId(lesson) {
+            const map = {};
+            textCenterNodes.forEach(n => { map[n.text] = n.id; });
+            return map[lesson] || '';
+        }
+
+        rawNodes.forEach(node => {
+            if (node.isTextCenter) return;
+            if (node.isBlock) {
+                const centerId = getTextCenterId(node.text);
+                if (centerId) addEdge(centerId, node.id);
+                return;
+            }
+            const blockId = getBlockId(node.text, node.category);
+            if (blockId) addEdge(blockId, node.id);
+        });
+
+        // 跨课关联
+        const labelMap = {};
+        rawNodes.forEach(n => {
+            if (n.isTextCenter || n.isBlock) return;
+            const key = n.baseLabel || n.label;
+            if (!labelMap[key]) labelMap[key] = [];
+            labelMap[key].push(n.id);
+        });
+        const crossPairs = new Set();
+        Object.keys(labelMap).forEach(baseLabel => {
+            const ids = labelMap[baseLabel];
+            if (ids.length < 2) return;
+            const lessonsSet = new Set();
+            ids.forEach(id => {
+                const node = rawNodes.find(n => n.id === id);
+                if (node) lessonsSet.add(node.text);
+            });
+            if (lessonsSet.size < 2) return;
+            for (let i = 0; i < ids.length; i++) {
+                for (let j = i + 1; j < ids.length; j++) {
+                    const ni = rawNodes.find(n => n.id === ids[i]);
+                    const nj = rawNodes.find(n => n.id === ids[j]);
+                    if (!ni || !nj) continue;
+                    if (ni.text === nj.text) continue;
+                    const key = [ids[i], ids[j]].sort().join('|');
+                    if (!crossPairs.has(key)) {
+                        crossPairs.add(key);
+                        rawEdges.push({ source: ids[i], target: ids[j], isCross: true, crossLabel: baseLabel });
+                    }
+                }
+            }
+        });
+
+        // ============================================================
+        // 4. ECharts 渲染
+        // ============================================================
+        const catMap = {
+            '课文中心': 0,
+            '板块': 1,
+            '实词': 2,
+            '虚词': 3,
+            '凝固词组': 4,
+            '句式': 5,
+            '文化': 6
+        };
+        const categories = [
+            { name: '课文中心', itemStyle: { color: '#1e293b' } },
+            { name: '板块', itemStyle: { color: '#64748b' } },
+            { name: '实词', itemStyle: { color: '#3b82f6' } },
+            { name: '虚词', itemStyle: { color: '#f59e0b' } },
+            { name: '凝固词组', itemStyle: { color: '#8b5cf6' } },
+            { name: '句式', itemStyle: { color: '#10b981' } },
+            { name: '文化', itemStyle: { color: '#ef4444' } }
+        ];
+
+        const nodes = rawNodes.map(n => {
+            let size = 28;
+            if (n.isTextCenter) size = 44;
+            else if (n.isBlock) size = 18;
+            let color = '#94a3b8';
+            if (n.category === '实词') color = '#3b82f6';
+            else if (n.category === '虚词') color = '#f59e0b';
+            else if (n.category === '凝固词组') color = '#8b5cf6';
+            else if (n.category === '句式') color = '#10b981';
+            else if (n.category === '文化') color = '#ef4444';
+            else if (n.category === '课文中心') color = '#1e293b';
+            else if (n.category === '板块') color = '#64748b';
+            return {
+                id: n.id,
+                name: n.label,
+                category: catMap[n.category] !== undefined ? catMap[n.category] : 0,
+                symbolSize: size,
+                itemStyle: { color },
+                raw: n,
+                _relation: '',
+                _isCrossNode: false
+            };
+        });
+
+        const edges = rawEdges.map(e => ({
+            source: e.source,
+            target: e.target,
+            lineStyle: {
+                color: e.isCross ? '#ef4444' : '#94a3b8',
+                width: e.isCross ? 2.5 : 1.0,
+                curveness: e.isCross ? 0.3 : 0.1
+            },
+            isCross: e.isCross || false,
+            crossLabel: e.crossLabel || '',
+            silent: !e.isCross,
+            emphasis: { disabled: true }
+        }));
+
+        const chartDom = document.getElementById('chart');
+        const myChart = echarts.init(chartDom);
+
+        let currentFilters = new Set(['all']);
+        let currentHighlights = new Set();
+        const lessonOrderArr = allLessonNames;
+
+        // 核心渲染函数
+        function buildOption(nodesData, edgesData, highlights) {
+            const isHighlightActive = highlights.size > 0;
+            const processedNodes = nodesData.map(n => {
+                let itemStyle = { ...n.itemStyle };
+                let labelStyle = { ...n.label };
+                let symbolSize = n.symbolSize;
+                const isMatch = n.raw && !n.raw.isTextCenter && !n.raw.isBlock && (() => {
+                    const cat = n.raw.category || '';
+                    const nodeStatus = n.raw.status || '';
+                    const nodeRelFull = n.raw.relationFull || '';
+                    const nodeRelArr = nodeRelFull.split(/[；;、]/).map(r => r.trim()).filter(Boolean);
+                    if (n._relation && !nodeRelArr.includes(n._relation)) nodeRelArr.push(n._relation);
+                    if (n.raw.entries) {
+                        n.raw.entries.forEach(e => {
+                            if (e.status && !nodeStatus) nodeStatus = e.status;
+                            if (e.relationFull) {
+                                e.relationFull.split(/[；;、]/).map(r => r.trim()).filter(Boolean).forEach(r => {
+                                    if (!nodeRelArr.includes(r)) nodeRelArr.push(r);
+                                });
+                            }
+                        });
+                    }
+                    const activeCats = [...highlights].filter(h => h.startsWith('cat-'));
+                    const activeStatus = [...highlights].filter(h => h.startsWith('status-'));
+                    const activeRels = [...highlights].filter(h => h.startsWith('rel-'));
+                    const hasCross = highlights.has('cross');
+                    if (activeCats.length === 0 && activeStatus.length === 0 && activeRels.length === 0 && !hasCross)
+                        return false;
+                    if (activeCats.length > 0 && !activeCats.some(h => h === 'cat-' + cat)) return false;
+                    if (activeStatus.length > 0 && !activeStatus.some(h => h === 'status-' + nodeStatus)) return false;
+                    if (activeRels.length > 0) {
+                        const expanded = [];
+                        activeRels.forEach(h => {
+                            const k = h.replace('rel-', '');
+                            if (typeof REL_GROUPS !== 'undefined' && REL_GROUPS['rel-' + k]) {
+                                REL_GROUPS['rel-' + k].forEach(s => expanded.push(s.replace('rel-', '')));
+                            } else expanded.push(k);
+                        });
+                        if (!expanded.some(r => nodeRelArr.some(nr => nr === r || nr.replace('・', '·') === r)))
+                            return false;
+                    }
+                    if (hasCross) {
+                        const baseL = n.raw.baseLabel || n.raw.label;
+                        const allIds = labelMap[baseL] || [];
+                        if (allIds.length < 2) return false;
+                        const allLessons = new Set();
+                        allIds.forEach(id => {
+                            const nn = rawNodes.find(r => r.id === id);
+                            if (nn && !nn.isTextCenter && !nn.isBlock) allLessons.add(nn.text);
+                        });
+                        if (allLessons.size < 2) return false;
+                        const isAllFilter = currentFilters.has('all');
+                        if (isAllFilter) {
+                            return true;
+                        } else {
+                            const currentLesson = n.raw.text;
+                            if (!allLessons.has(currentLesson)) return false;
+                            const sorted = lessonOrderArr.filter(ls => allLessons.has(ls));
+                            const idxInCross = sorted.indexOf(currentLesson);
+                            if (idxInCross > 0) return true;
+                            return false;
+                        }
+                    }
+                    return true;
+                })();
+                if (isHighlightActive) {
+                    if (isMatch) {
+                        itemStyle = { ...itemStyle, borderColor: '#ef4444', borderWidth: 3, shadowBlur: 12,
+                            shadowColor: 'rgba(239,68,68,0.4)' };
+                        labelStyle = { ...labelStyle, fontWeight: 700, color: '#b91c1c', opacity: 1 };
+                        symbolSize = (symbolSize || 28) * 1.3;
+                    } else {
+                        itemStyle = { ...itemStyle, opacity: 0.12 };
+                        labelStyle = { ...labelStyle, opacity: 0.12 };
+                    }
+                }
+                n._isHighlightMatch = isMatch;
+                return { ...n, itemStyle, label: labelStyle, symbolSize };
+            });
+            const processedEdges = edgesData.map(e => {
+                let lineStyle = { ...e.lineStyle };
+                if (isHighlightActive) {
+                    if (highlights.has('cross') && e.isCross) {
+                        lineStyle = { ...lineStyle, width: 4, opacity: 1, color: '#ef4444' };
+                    } else {
+                        lineStyle = { ...lineStyle, opacity: 0.08 };
+                    }
+                }
+                return { ...e, lineStyle };
+            });
+            return {
+                tooltip: {
+                    trigger: 'item',
+                    triggerOn: 'mousemove',
+                    showDelay: 600,
+                    hideDelay: 50,
+                    enterable: false,
+                    alwaysShowContent: false,
+                    formatter: function(params) {
+                        if (params.dataType === 'edge') return '';
+                        if (params.dataType === 'node') {
+                            const d = params.data;
+                            if (currentHighlights.size > 0 && d.raw && !d.raw.isTextCenter && !d.raw.isBlock) {
+                                const processedNode = nodes.find(n => n.id === d.id);
+                                if (processedNode && !processedNode._isHighlightMatch) return '';
+                            }
+                            if (d.raw && d.raw.isTextCenter) return `<strong>📄 ${d.name}</strong><br/>课文中心`;
+                            if (d.raw && d.raw.isBlock) return '';
+                            if (d.raw) {
+                                let html = `<strong>${d.name}</strong>`;
+                                if (d.raw.pinyin) html += `<br/>拼音：${d.raw.pinyin}`;
+                                if (d.raw.category) html += `<br/>分类：${d.raw.category}`;
+                                if (d.raw.text) html += `<br/>课文：${d.raw.text}`;
+                                if (d.raw.entries && d.raw.entries.length > 0) {
+                                    const firstSentence = d.raw.entries.map(e => e.sentence).filter(s => s && s.trim())[0];
+                                    if (firstSentence) {
+                                        const shortSentence = firstSentence.length > 30 ? firstSentence.slice(0, 30) +
+                                        '…' : firstSentence;
+                                        html += `<br/><span style="color:#94a3b8;font-size:11px;">「${shortSentence}」</span>`;
+                                    }
+                                }
+                                return html;
+                            }
+                            return d.name;
+                        }
+                        return '';
+                    }
+                },
+                legend: { show: false },
+                series: [{
+                    type: 'graph',
+                    layout: 'force',
+                    force: { repulsion: 450, edgeLength: [80, 280], gravity: 0.05, friction: 0.15,
+                        layoutAnimation: true },
+                    data: processedNodes,
+                    edges: processedEdges,
+                    categories: categories,
+                    roam: true,
+                    draggable: true,
+                    focusNodeAdjacency: false,
+                    emphasis: { disabled: true },
+                    edgeSymbol: ['none', 'none'],
+                    label: {
+                        show: true,
+                        position: 'bottom',
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: '#1e293b',
+                        offset: [0, 4],
+                        formatter: function(params) {
+                            if (params.data && params.data.raw && params.data.raw.isTextCenter) {
+                                return '{bold|' + params.name + '}';
+                            }
+                            return params.name;
+                        },
+                        rich: { bold: { fontSize: 14, fontWeight: 700, color: '#1e293b' } }
+                    },
+                    lineStyle: { color: 'source', curveness: 0.1, width: 1.0, opacity: 0.5 },
+                    itemStyle: { borderColor: '#ffffff', borderWidth: 2, shadowBlur: 4,
+                        shadowColor: 'rgba(0,0,0,0.05)' },
+                    symbolSize: function(value, params) {
+                        if (params.data && params.data.raw && params.data.raw.isTextCenter) return 44;
+                        if (params.data && params.data.raw && params.data.raw.isBlock) return 18;
+                        return params.data.symbolSize || 28;
+                    },
+                    zoom: 0.6,
+                    roam: true
+                }]
+            };
+        }
+
+        function renderGraph() {
+            let filteredNodes = nodes;
+            if (!currentFilters.has('all') && currentFilters.size > 0) {
+                filteredNodes = nodes.filter(n => n.raw && currentFilters.has(n.raw.text));
+            }
+            const nodeIds = new Set(filteredNodes.map(n => n.id));
+            let filteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+            const crossLabels = new Set();
+            edges.forEach(e => { if (e.isCross) crossLabels.add(e.crossLabel); });
+            filteredNodes.forEach(n => {
+                const bl = n.raw ? (n.raw.baseLabel || n.raw.label) : '';
+                n._isCrossNode = crossLabels.has(bl) && !n.raw.isTextCenter && !n.raw.isBlock;
+            });
+            const option = buildOption(filteredNodes, filteredEdges, currentHighlights);
+            myChart.setOption(option, true);
+            myChart.resize();
+        }
+
+        renderGraph();
+
+        // ============================================================
+        // 5. 交互功能
+        // ============================================================
+        function toggleCatMenu() {
+            document.getElementById('catMenu').classList.toggle('open');
+            document.getElementById('statusMenu')?.classList.remove('open');
+            document.getElementById('relMenu')?.classList.remove('open');
+        }
+
+        function toggleCatSubById(subId, toggleEl) {
+            const sub = document.getElementById(subId);
+            if (sub) sub.classList.toggle('open');
+            if (toggleEl) toggleEl.classList.toggle('open');
+        }
+
+        function toggleCatHlDirect(btn) {
+            const hl = btn.dataset.hl;
+            btn.classList.toggle('active-cat');
+            if (btn.classList.contains('active-cat')) { currentHighlights.add(hl); } else { currentHighlights.delete(hl); }
+            updateCatBtnLabel();
+            renderGraph();
+        }
+
+        function updateCatBtnLabel() {
+            const active = [...currentHighlights].filter(h => h.startsWith('cat-'));
+            const el = document.getElementById('catBtnLabel');
+            if (!el) return;
+            if (active.length > 0) {
+                el.textContent = '分类 ✓ ' + active.map(h => h.replace('cat-', '')).join('/');
+                el.style.color = '#1d4ed8';
+            } else { el.textContent = '分类 ▾';
+                el.style.color = ''; }
+        }
+
+        function toggleStatusMenu() {
+            document.getElementById('statusMenu').classList.toggle('open');
+            document.getElementById('catMenu').classList.remove('open');
+            document.getElementById('relMenu').classList.remove('open');
+        }
+
+        function toggleStatusHl(btn) {
+            btn.classList.toggle('active-cat');
+            if (btn.classList.contains('active-cat')) { currentHighlights.add(btn.dataset.hl); } else { currentHighlights
+                    .delete(btn.dataset.hl); }
+            updateStatusBtnLabel();
+            renderGraph();
+        }
+
+        function updateStatusBtnLabel() {
+            const active = [...currentHighlights].filter(h => h.startsWith('status-'));
+            const el = document.getElementById('statusBtnLabel');
+            if (!el) return;
+            if (active.length > 0) {
+                el.textContent = '现状 ✓ ' + active.map(h => h.replace('status-', '')).join('/');
+                el.style.color = '#1d4ed8';
+            } else { el.textContent = '文中功能现状 ▾';
+                el.style.color = ''; }
+        }
+
+        function toggleRelMenu() {
+            document.getElementById('relMenu').classList.toggle('open');
+            document.getElementById('catMenu').classList.remove('open');
+            document.getElementById('statusMenu').classList.remove('open');
+        }
+
+        const REL_GROUPS = {
+            'rel-语义层': ['rel-语义扩大', 'rel-语义缩小', 'rel-语义转移'],
+            'rel-词类活用': ['rel-词类活用·名作动', 'rel-词类活用·形作动', 'rel-词类活用·使动', 'rel-词类活用·名作状'],
+            'rel-句式': ['rel-省略句', 'rel-判断句', 'rel-定语后置', 'rel-被动句', 'rel-倒装句'],
+        };
+
+        function toggleRelHl(btn) {
+            btn.classList.toggle('active-cat');
+            if (btn.classList.contains('active-cat')) { currentHighlights.add(btn.dataset.hl); } else { currentHighlights
+                    .delete(btn.dataset.hl); }
+            syncRelParentStates();
+            updateRelBtnLabel();
+            renderGraph();
+        }
+
+        function toggleRelHlGroup(btn, groupKey) {
+            const children = REL_GROUPS[groupKey] || [];
+            btn.classList.toggle('active-cat');
+            const isActive = btn.classList.contains('active-cat');
+            children.forEach(h => { if (isActive) currentHighlights.add(h);
+                else currentHighlights.delete(h); });
+            document.querySelectorAll('.cat-sub-btn').forEach(sb => {
+                if (children.includes(sb.dataset.hl)) {
+                    sb.classList.toggle('active-hl', isActive);
+                    sb.classList.toggle('active-cat', isActive);
+                }
+            });
+            updateRelBtnLabel();
+            renderGraph();
+        }
+
+        function syncRelParentStates() {
+            const subBtns = document.querySelectorAll('.cat-sub-btn');
+            const activeSubs = new Set();
+            subBtns.forEach(sb => {
+                if (sb.classList.contains('active-cat') || sb.classList.contains('active-hl')) {
+                    activeSubs.add(sb.dataset.hl);
+                }
+            });
+            Object.keys(REL_GROUPS).forEach(groupKey => {
+                const children = REL_GROUPS[groupKey] || [];
+                const parentBtn = document.querySelector('.cat-parent-btn[data-hl="' + groupKey + '"]');
+                if (!parentBtn) return;
+                const allActive = children.every(h => activeSubs.has(h));
+                const someActive = children.some(h => activeSubs.has(h));
+                if (allActive || someActive) {
+                    parentBtn.classList.add('active-cat');
+                } else {
+                    parentBtn.classList.remove('active-cat');
+                }
+            });
+        }
+
+        function updateRelBtnLabel() {
+            const active = [...currentHighlights].filter(h => h.startsWith('rel-'));
+            const el = document.getElementById('relBtnLabel');
+            if (!el) return;
+            if (active.length > 0) {
+                const names = active.map(h => h.replace('rel-', '').replace(/·/g, '·')).join('/');
+                el.textContent = '关联 ✓ ' + names;
+                el.style.color = '#1d4ed8';
+            } else { el.textContent = '关联类型 ▾';
+                el.style.color = ''; }
+        }
+
+        document.querySelectorAll('.hl-btn[data-hl="cross"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('active-hl');
+                if (this.classList.contains('active-hl')) {
+                    currentHighlights.add('cross');
+                } else {
+                    currentHighlights.delete('cross');
+                }
+                renderGraph();
+            });
+        });
+
+        document.getElementById('clearHl').addEventListener('click', function() {
+            document.querySelectorAll('.hl-btn, .cat-sub-btn, .cat-menu-item').forEach(b => {
+                b.classList.remove('active-hl');
+                b.classList.remove('active-cat');
+            });
+            currentHighlights.clear();
+            document.getElementById('catBtnLabel').textContent = '分类 ▾';
+            document.getElementById('catBtnLabel').style.color = '';
+            document.getElementById('statusBtnLabel').textContent = '文中功能现状 ▾';
+            document.getElementById('statusBtnLabel').style.color = '';
+            document.getElementById('relBtnLabel').textContent = '关联类型 ▾';
+            document.getElementById('relBtnLabel').style.color = '';
+            document.querySelectorAll('.hl-btn[data-hl="cross"]').forEach(b => b.classList.remove('active-hl'));
+            renderGraph();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!document.getElementById('catBtnWrap')?.contains(e.target))
+                document.getElementById('catMenu').classList.remove('open');
+            if (!document.getElementById('statusBtnWrap')?.contains(e.target))
+                document.getElementById('statusMenu')?.classList.remove('open');
+            if (!document.getElementById('relBtnWrap')?.contains(e.target))
+                document.getElementById('relMenu')?.classList.remove('open');
+        });
+
+        // 篇目切换
+        document.getElementById('lessonToggle').addEventListener('click', function() {
+            const row = document.getElementById('lessonFilterRow');
+            if (row.style.display === 'none') {
+                row.style.display = 'flex';
+                this.textContent = '📖 收起篇目';
+            } else {
+                row.style.display = 'none';
+                this.textContent = '📖 篇目';
+            }
+        });
+
+        document.querySelectorAll('#filterGroup .btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const val = this.dataset.text;
+                if (val === 'all') {
+                    currentFilters.clear();
+                    currentFilters.add('all');
+                    document.querySelectorAll('#filterGroup .btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                } else {
+                    if (currentFilters.has('all')) {
+                        currentFilters.clear();
+                        document.querySelector('#filterGroup .btn[data-text="all"]').classList.remove('active');
+                    }
+                    if (currentFilters.has(val)) {
+                        currentFilters.delete(val);
+                        this.classList.remove('active');
+                        if (currentFilters.size === 0) {
+                            currentFilters.add('all');
+                            document.querySelector('#filterGroup .btn[data-text="all"]').classList.add('active');
+                        }
+                    } else {
+                        currentFilters.add(val);
+                        this.classList.add('active');
+                    }
+                }
+                renderGraph();
+            });
+        });
+
+        myChart.on('click', function(params) {
+            if (params.dataType === 'node') {
+                const data = params.data;
+                const node = nodes.find(n => n.id === data.id);
+                if (!node || !node.raw) return;
+                if (node.raw.isTextCenter || node.raw.isBlock) return;
+                showDetailPanel(node.raw);
+                setTimeout(function() {
+                    document.getElementById('detailPanel').classList.add('open');
+                }, 10);
+            }
+            if (params.dataType === 'edge') {
+                const edge = params.data;
+                if (edge.isCross && edge.crossLabel && currentHighlights.has('cross')) {
+                    showCrossModal(edge.crossLabel);
+                }
+            }
+        });
+
+        document.getElementById('closePanel').addEventListener('click', function() {
+            document.getElementById('detailPanel').classList.remove('open');
+        });
+
+        const CAT_COLORS = { '实词': '#3b82f6', '虚词': '#f59e0b', '凝固词组': '#8b5cf6', '句式': '#10b981', '文化': '#ef4444' };
+
+        // 显示详情面板
+        function showDetailPanel(node) {
+            const panel = document.getElementById('detailPanel');
+            const title = document.getElementById('detailTitle');
+            const body = document.getElementById('detailBody');
+            title.innerHTML = `<span style="font-size:20px;font-weight:800;">${node.label}</span>` +
+                (node.pinyin ? `<span style="font-size:12px;color:#94a3b8;font-weight:400;margin-left:8px;">${node.pinyin}</span>` :
+                    '') +
+                `<span style="font-size:10px;color:#fff;background:${CAT_COLORS[node.category] || '#64748b'};border-radius:10px;padding:1px 8px;margin-left:8px;vertical-align:middle;">${node.category || ''}</span>`;
+
+            if (node.isCulture) {
+                let html =
+                    `<div class="detail-item"><span class="label">分类</span><span class="value"><span class="tag">文化</span></span></div>
+                    <div class="detail-item"><span class="label">篇目</span><span class="value">${node.text || '-'}</span></div>`;
+                if (node.cultureNote) {
+                    html +=
+                        `<div class="detail-item"><span class="label">拓展</span><div class="value" style="white-space:pre-wrap;font-size:13px;line-height:1.8;">${node.cultureNote}</div></div>`;
+                } else if (node.entries.length && node.entries[0].note) {
+                    html +=
+                        `<div class="detail-item"><span class="label">拓展</span><div class="value" style="white-space:pre-wrap;font-size:13px;line-height:1.8;">${node.entries[0].note}</div></div>`;
+                }
+                body.innerHTML = html;
+                panel.classList.add('open');
+                return;
+            }
+
+            let html =
+                `<div class="detail-item"><span class="label">篇目</span><span class="value">${node.text || '-'}</span></div>`;
+
+            if (node.entries.length === 0) {
+                html += `<div class="detail-item"><span class="value" style="color:#94a3b8;">无详细义项</span></div>`;
+            } else {
+                node.entries.forEach((entry, idx) => {
+                    const num = idx + 1;
+                    html += `<div class="entry-block">`;
+                    const entryTitle = node.entries.length > 1 && entry.entryLabel && entry.entryLabel !== node.label ?
+                        entry.entryLabel :
+                        (node.entries.length > 1 ? '义项' + num : '');
+                    if (entryTitle) html += `<div class="entry-title">${entryTitle}</div>`;
+                    if (entry.wenZhongYi) {
+                        html +=
+                            `<div class="detail-item"><span class="label">文中义</span><div class="value">${entry.wenZhongYi}</div></div>`;
+                    }
+                    if (entry.sentence) {
+                        const sentences = entry.sentence.split('\n').filter(s => s.trim());
+                        const sHtml = sentences.map(s =>
+                            `<div class="sentence-box indent">${s.trim()}</div>`
+                        ).join('');
+                        html +=
+                            `<div class="detail-item"><span class="label">课文原句</span><div class="value">${sHtml}</div></div>`;
+                    }
+                    if (entry.xianDaiDuiYing) {
+                        let xiandaiHtml = entry.xianDaiDuiYing;
+                        if (/\d+[.、．]/.test(xiandaiHtml)) {
+                            const parts = xiandaiHtml.split(/(?=\d+[.、．])/g).filter(s => s.trim());
+                            xiandaiHtml = parts.map(p => `<div style="margin-bottom:2px;">${p.trim()}</div>`).join('');
+                        }
+                        html +=
+                            `<div class="detail-item"><span class="label">现代对应</span><div class="value">${xiandaiHtml}</div></div>`;
+                    }
+                    if (entry.example && entry.example.trim()) {
+                        html +=
+                            `<div class="detail-item"><span class="label">例词</span><div class="value example-words">${entry.example}</div></div>`;
+                    }
+                    if (entry.status) {
+                        html +=
+                            `<div class="detail-item"><span class="label">文中功能现状</span><span class="value"><span class="status-badge">${entry.status}</span></span></div>`;
+                    }
+                    if (entry.relationFull) {
+                        html +=
+                            `<div class="detail-item"><span class="label">关联类型</span><span class="value"><span class="relation-badge">${entry.relationFull}</span></span></div>`;
+                    }
+                    if (entry.yanBianShuoMing) {
+                        html +=
+                            `<div class="detail-item"><span class="label">演变说明</span><div class="value evolve-note">${entry.yanBianShuoMing}</div></div>`;
+                    }
+                    html += `</div>`;
+                });
+            }
+
+            // 跨课关联
+            const bl = node.baseLabel || node.label;
+            const crossIds = labelMap[bl] || [];
+            const currentLessonIdx = lessonOrderArr.indexOf(node.text);
+            const allCrossNodes = crossIds
+                .map(id => rawNodes.find(n => n.id === id))
+                .filter(n => {
+                    if (!n || n.isTextCenter || n.isBlock) return false;
+                    const idx = lessonOrderArr.indexOf(n.text);
+                    return idx >= 0 && idx <= currentLessonIdx;
+                });
+            const hasOtherLessons = allCrossNodes.some(n => n.text !== node.text);
+
+            if (hasOtherLessons) {
+                const senseMap = new Map();
+                const senseOrder = [];
+                // 当前课节点优先，保证自身义项排在前面
+                const sortedCrossNodes = [...allCrossNodes].sort((a, b) => {
+                    const aIsCurrent = a.text === node.text ? 0 : 1;
+                    const bIsCurrent = b.text === node.text ? 0 : 1;
+                    return aIsCurrent - bIsCurrent;
+                });
+                sortedCrossNodes.forEach(cn => {
+                    const lesson = cn.text || '未知篇目';
+                    (cn.entries || []).forEach(entry => {
+                        const sense = (entry.wenZhongYi || '').trim();
+                        if (!sense) return;
+                        const key = getSenseKey(sense);
+                        if (!senseMap.has(key)) {
+                            senseMap.set(key, []);
+                            senseOrder.push(key);
+                        }
+                        if (entry.sentence && entry.sentence.trim()) {
+                            entry.sentence.split('\n').filter(s => s.trim()).forEach(s => {
+                                senseMap.get(key).push({ lesson, sentence: s.trim() });
+                            });
+                        }
+                    });
+                });
+
+                html += `<div class="cross-ref-section">
+                    <div class="cross-ref-header">🔗 跨课关联（按义项归类）</div>`;
+                senseOrder.forEach((key, idx) => {
+                    const items = senseMap.get(key);
+                    html += `<div class="cross-ref-lesson-block">
+                        <div class="cross-ref-lesson-title">${idx + 1}.　${key}</div>`;
+                    items.forEach(item => {
+                        html += `<div class="cross-ref-entry" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:3px;">
+                            <span style="flex-shrink:0;font-size:9px;color:#fff;background:#64748b;border-radius:3px;padding:1px 5px;margin-top:2px;">${item.lesson}</span>
+                            <span class="cross-ref-sentence" style="border:none;padding-left:0;margin-top:0;">${item.sentence}</span>
+                        </div>`;
+                    });
+                    html += `</div>`;
+                });
+                html += `</div>`;
+            }
+
+            const tuozhan = (() => {
+                if (node.isCulture && node.cultureNote) return node.cultureNote;
+                if (node.entries && node.entries.length > 0) {
+                    const f = node.entries.find(e => e.note && e.note.trim());
+                    return f ? f.note.trim() : '';
+                }
+                return '';
+            })();
+            if (tuozhan) {
+                html += '<div style="margin-top:14px;border-top:1px solid #e9edf4;padding-top:10px;">' +
+                    '<div style="font-size:12px;font-weight:700;color:#8b5cf6;margin-bottom:6px;">📖 拓展</div>' +
+                    '<div style="font-size:12px;color:#475569;line-height:1.7;background:#faf5ff;border-radius:8px;padding:10px 12px;border-left:3px solid #8b5cf6;">' +
+                    tuozhan + '</div></div>';
+            }
+
+            body.innerHTML = html;
+            panel.classList.add('open');
+        }
+
+        function getSenseKey(wenZhongYi) {
+            const s = wenZhongYi.trim();
+            if (/假设让步/.test(s) && /虽/.test(s)) return '假设让步，\u201c即使……，一定……\u201d';
+            if (/事实让步|基于事实/.test(s) && /虽/.test(s)) return '事实让步，\u201c虽然......必定......\u201d';
+            if (/表承接|然后|就/.test(s) && /连词/.test(s)) return '连词，表承接（然后、就）';
+            if (/表转折|但是|却/.test(s) && /连词/.test(s)) return '连词，表转折（但是、却）';
+            if (/表修饰|修饰/.test(s) && /连词/.test(s)) return '连词，表修饰（连接状语和动词，不译）';
+            if (/连词.*转折/.test(s)) return '连词，表转折（但是、却）';
+            if (/连词.*承接/.test(s)) return '连词，表承接（然后、就）';
+            if (/结构助词|助词.*的/.test(s) && !/取独|取消|定语后置|音节/.test(s)) return '结构助词，相当于现代汉语"的"';
+            if (/取独|取消.*独立/.test(s)) return '用在主谓之间，取消句子独立性，不翻译';
+            if (/定语后置|后置.*标志/.test(s)) return '定语后置的标志，无实义，是古汉语特有语法标记';
+            if (/音节助词|凑.*音节|补足音节/.test(s)) return '音节助词，凑足音节，不翻译';
+            if (/动词.*到|动词.*往|动词.*去|动词.*前往/.test(s)) return '动词，到、前往某个地方';
+            if (/代词.*指代|指代.*前文|代词.*它|代词.*他/.test(s) && !/指示/.test(s)) return '代词，指代前文提到的人或事物（他/她/它/这件事）';
+            if (/的人|的事物|指代.*结构|者.*指/.test(s) || s.includes('……的人')) return '代词，……的人/事物';
+            if (/指示代词|这|此(?!.*对)/.test(s) && !/判断|正确/.test(s)) return '指示代词，这、此';
+            if (/判断.*动词|正确|对(?!.*面)/.test(s) && /是/.test(s)) return '判断动词，是（对/正确）';
+            if (/在|从(?!.*对)|状语后置/.test(s) && /介词/.test(s) && !/对于|向|面/.test(s))
+                return '介词，在/从/到（常与状语后置句式关联）';
+            if (/对于|向|面对|面/.test(s) && /介词/.test(s)) return '介词，对于/向/面对（引出动作的对象）';
+            if (/兼词|于此|于之|在那里|在这里/.test(s)) return '兼词，相当于"于此"（在那里/在这件事上）';
+            if (/语气.*助词|句末|语气词/.test(s)) return '语气助词，用在句末，表示陈述或反问语气';
+            if (/代词|哪里|怎么/.test(s) && !/兼/.test(s)) return '代词/疑问代词，哪里、怎么';
+            if (/语气|句末|了/.test(s)) return '语气助词，表示"了"，用在句末表确认或感叹';
+            if (/代词.*他|代词.*它|代词.*那/.test(s)) return '代词，他的/它的/那个';
+            if (/反问|难道/.test(s)) return '语气副词，表反问（难道）';
+            if (/推测|大概|也许/.test(s)) return '语气副词，表推测（大概、也许）';
+            const parts = s.split(/[，,、；;]/);
+            return parts[0].trim();
+        }
+
+        let _currentCrossLabel = '';
+
+        function switchModalTab(tab) {
+            const crossBody = document.getElementById('modalBody');
+            const lectureBody = document.getElementById('modalLectureBody');
+            const tabC = document.getElementById('tabCross');
+            const tabL = document.getElementById('tabLecture');
+            if (tab === 'cross') {
+                crossBody.style.display = '';
+                lectureBody.style.display = 'none';
+                tabC.classList.add('active');
+                tabL.classList.remove('active');
+            } else {
+                crossBody.style.display = 'none';
+                lectureBody.style.display = '';
+                tabC.classList.remove('active');
+                tabL.classList.add('active');
+                buildLectureView(_currentCrossLabel);
+            }
+        }
+
+        // 构建讲解视图（针对文化节点特殊处理）
+        function buildLectureView(label) {
+            const ids = labelMap[label] || [];
+            const lectureBody = document.getElementById('modalLectureBody');
+
+            // 对于文化类节点（如“说”、“托物言志”），直接显示各篇的说明文字
+            const cultureNodes = ids.map(id => rawNodes.find(n => n.id === id)).filter(n => n && n.isCulture);
+            if (cultureNodes.length > 0) {
+                let html = `<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">各篇文化说明</div>`;
+                cultureNodes.forEach(n => {
+                    const note = n.cultureNote || (n.entries.length ? n.entries[0].note : '');
+                    if (note) {
+                        html += `<div class="lecture-sense-block" style="border-left-color:#ef4444;">
+                            <div class="lecture-sense-title" style="color:#b91c1c;">📖 ${n.text}</div>
+                            <div style="font-size:12px;color:#475569;line-height:1.6;white-space:pre-wrap;">${note}</div>
+                        </div>`;
+                    }
+                });
+                lectureBody.innerHTML = html;
+                return;
+            }
+
+            // 普通字词：按义项归类
+            const senseMap = new Map();
+            const senseOrder = [];
+            ids.forEach(id => {
+                const node = rawNodes.find(n => n.id === id);
+                if (!node || node.isTextCenter || node.isBlock) return;
+                if (!currentFilters.has('all') && currentFilters.size > 0) {
+                    if (!currentFilters.has(node.text)) return;
+                }
+                const lesson = node.text || '未知篇目';
+                (node.entries || []).forEach(entry => {
+                    const sense = (entry.wenZhongYi || '').trim();
+                    if (!sense) return;
+                    const key = getSenseKey(sense);
+                    if (!senseMap.has(key)) {
+                        senseMap.set(key, { title: sense, items: [] });
+                        senseOrder.push(key);
+                    }
+                    if (entry.sentence && entry.sentence.trim()) {
+                        senseMap.get(key).items.push({
+                            lesson,
+                            sentence: entry.sentence.trim(),
+                            entryLabel: entry.entryLabel || label,
+                            originalSense: sense
+                        });
+                    }
+                });
+            });
+
+            if (senseOrder.length === 0) {
+                lectureBody.innerHTML = '<div style="padding:12px;color:#94a3b8;text-align:center;">暂无义项数据</div>';
+                return;
+            }
+
+            let html = `<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">按义项归类各篇例句</div>`;
+            senseOrder.forEach((key, idx) => {
+                const group = senseMap.get(key);
+                html += `<div class="lecture-sense-block">
+                    <div class="lecture-sense-title">
+                        <span class="lecture-sense-num">${idx + 1}</span>${group.title}
+                    </div>`;
+                if (group.items.length === 0) {
+                    html += `<div style="font-size:12px;color:#94a3b8;">（无例句）</div>`;
+                } else {
+                    group.items.forEach(item => {
+                        html += `<div class="lecture-sentence-item">
+                            <span class="lecture-lesson-tag">${item.lesson}</span>
+                            <span class="lecture-sentence-text">${item.sentence}</span>
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+            });
+            lectureBody.innerHTML = html;
+        }
+
+        function showCrossModal(label) {
+            _currentCrossLabel = label;
+            switchModalTab('cross');
+            const ids = labelMap[label] || [];
+            if (ids.length < 2) {
+                document.getElementById('modalTitle').textContent = `📎 “${label}” 跨课关联`;
+                document.getElementById('modalSub').textContent = '点击相关节点查看详情';
+                document.getElementById('modalBody').innerHTML =
+                    `<div style="padding:10px;color:#475569;">该字词跨课出现，点击图谱中的红色连线或相关节点查看。</div>`;
+                document.getElementById('crossModal').classList.add('open');
+                return;
+            }
+            const groups = {};
+            ids.forEach(id => {
+                const node = rawNodes.find(n => n.id === id);
+                if (node && !node.isTextCenter && !node.isBlock) {
+                    if (!currentFilters.has('all') && currentFilters.size > 0) {
+                        if (!currentFilters.has(node.text)) return;
+                    }
+                    const key = node.text || '未知篇目';
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(node.entries.map(e => e.sentence || node.label).join('；') || node.label);
+                }
+            });
+            document.getElementById('modalTitle').textContent = `📎 “${label}” 跨课关联`;
+            document.getElementById('modalSub').textContent = `共 ${Object.keys(groups).length} 篇课文出现`;
+            let html = '';
+            Object.keys(groups).forEach(lesson => {
+                html += `<div class="func-group">
+                    <div class="func-title">${lesson}</div>
+                    ${groups[lesson].map(s => `<div class="example-line">${s}</div>`).join('')}
+                </div>`;
+            });
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('crossModal').classList.add('open');
+        }
+
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('crossModal').classList.remove('open');
+        });
+        document.getElementById('crossModal').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('open');
+        });
+
+        // ===== 搜索功能（优化排序 + 显示篇目） =====
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (!query) { searchResults.classList.remove('open'); return; }
+            const results = nodes.filter(n =>
+                n.raw && !n.raw.isTextCenter && !n.raw.isBlock && (
+                    n.raw.label.includes(query) ||
+                    (n.raw.pinyin && n.raw.pinyin.includes(query)) ||
+                    (n.raw.entries && n.raw.entries.some(e => e.wenZhongYi && e.wenZhongYi.includes(query))) ||
+                    (n.raw.entries && n.raw.entries.some(e => e.xianDaiDuiYing && e.xianDaiDuiYing.includes(query)))
+                )
+            );
+            // 排序：精确匹配 > 前缀匹配 > 其他
+            results.sort((a, b) => {
+                const aLabel = a.raw.label;
+                const bLabel = b.raw.label;
+                const aBase = a.raw.baseLabel || aLabel;
+                const bBase = b.raw.baseLabel || bLabel;
+                // 精确匹配（label或baseLabel完全等于查询词）
+                const aExact = (aLabel === query || aBase === query);
+                const bExact = (bLabel === query || bBase === query);
+                if (aExact && !bExact) return -1;
+                if (!aExact && bExact) return 1;
+                // 前缀匹配
+                const aPrefix = aLabel.startsWith(query) || aBase.startsWith(query);
+                const bPrefix = bLabel.startsWith(query) || bBase.startsWith(query);
+                if (aPrefix && !bPrefix) return -1;
+                if (!aPrefix && bPrefix) return 1;
+                return 0;
+            });
+            if (results.length === 0) {
+                searchResults.innerHTML = `<div class="empty">当前未查到</div>`;
+                searchResults.classList.add('open');
+                return;
+            }
+            // 按分类分组
+            const groups = { '实词': [], '虚词': [], '凝固词组': [], '句式': [], '文化': [] };
+            results.forEach(n => {
+                const cat = n.raw.category || '实词';
+                if (groups[cat]) groups[cat].push(n);
+                else groups['实词'].push(n);
+            });
+            let html = '';
+            Object.keys(groups).forEach(cat => {
+                if (groups[cat].length === 0) return;
+                html += `<div class="result-group">
+                    <div class="group-label">${cat}</div>
+                    ${groups[cat].map(n => `
+                        <div class="result-item" data-id="${n.id}">
+                            <div class="ri-left">
+                                <span class="ri-word">${n.raw.label} <span style="font-weight:400;font-size:10px;color:#94a3b8;">${n.raw.pinyin || ''}</span></span>
+                                <span class="ri-desc">${n.raw.text} · ${n.raw.entries.length ? n.raw.entries[0].wenZhongYi || '' : ''}</span>
+                            </div>
+                            <span class="ri-tag">${cat}</span>
+                        </div>
+                    `).join('')}
+                </div>`;
+            });
+            searchResults.innerHTML = html;
+            searchResults.classList.add('open');
+            // 点击结果项跳转
+            searchResults.querySelectorAll('.result-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    const node = nodes.find(n => n.id === id);
+                    if (node && node.raw) {
+                        showDetailPanel(node.raw);
+                        myChart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: nodes
+                                .findIndex(n => n.id === id) });
+                        setTimeout(() => { myChart.dispatchAction({ type: 'downplay', seriesIndex: 0 }); },
+                            3000);
+                        searchResults.classList.remove('open');
+                        searchInput.value = '';
+                    }
+                });
+            });
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-box')) searchResults.classList.remove('open');
+        });
+
+        // 侧边栏
+        const sidebar = document.getElementById('sidebar');
+        document.getElementById('dirToggle').addEventListener('click', function() {
+            sidebar.classList.toggle('open');
+        });
+        document.getElementById('sidebarClose').addEventListener('click', function() {
+            sidebar.classList.remove('open');
+        });
+
+        function buildSidebar() {
+            const container = document.getElementById('sidebarBody');
+            let html = '';
+            lessonOrderArr.forEach(text => {
+                const nodesInText = rawNodes.filter(n => n.text === text && !n.isTextCenter && !n.isBlock);
+                if (nodesInText.length === 0) return;
+                const mods = { '实词': [], '虚词': [], '凝固词组': [], '句式': [], '文化': [] };
+                nodesInText.forEach(n => { if (mods[n.category]) mods[n.category].push(n); });
+                html += `<div class="dir-item">
+                    <div class="dir-label" data-target="dir_${text}">
+                        ${text} <span class="arrow">▶</span>
+                    </div>
+                    <div class="dir-children" id="dir_${text}">`;
+                ['实词', '虚词', '凝固词组', '句式', '文化'].forEach(cat => {
+                    if (mods[cat].length === 0) return;
+                    const modId = `mod_${text}_${cat}`;
+                    html += `
+                        <div class="module-label" data-target="${modId}">
+                            ${cat} <span class="mod-arrow">▶</span>
+                        </div>
+                        <div class="module-children" id="${modId}">
+                            ${mods[cat].map(n => `<div class="child-item" data-id="${n.id}">${n.label}</div>`).join('')}
+                        </div>`;
+                });
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+
+            container.querySelectorAll('.dir-label').forEach(label => {
+                label.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const target = document.getElementById(this.dataset.target);
+                    const arrow = this.querySelector('.arrow');
+                    if (target) { target.classList.toggle('open');
+                        arrow.classList.toggle('open'); }
+                });
+            });
+            container.querySelectorAll('.module-label').forEach(label => {
+                label.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const target = document.getElementById(this.dataset.target);
+                    const arrow = this.querySelector('.mod-arrow');
+                    if (target) { target.classList.toggle('open');
+                        arrow.classList.toggle('open'); }
+                });
+            });
+            container.querySelectorAll('.child-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    const node = rawNodes.find(n => n.id === id);
+                    if (node) {
+                        showDetailPanel(node);
+                        document.getElementById('detailPanel').classList.add('open');
+                    }
+                });
+            });
+        }
+
+        buildSidebar();
+
+        window.addEventListener('resize', function() { myChart.resize(); });
+
+        updateCatBtnLabel();
+        updateStatusBtnLabel();
+        updateRelBtnLabel();
+
+        console.log('📖 古代汉语知识图谱（全七课完整版）已加载');
+        console.log(`共 ${nodes.length} 个节点，${edges.length} 条边`);
+    </script>
+</body>
+</html>
