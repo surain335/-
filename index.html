@@ -836,6 +836,86 @@
         .modal-box .close-modal-btn:hover {
             background: #e2e8f0;
         }
+
+        /* ===== 登录弹窗样式 ===== */
+        #loginOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #loginBox {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 36px 32px 28px;
+            width: 340px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+            text-align: center;
+        }
+        #loginBox .login-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        #loginBox .login-sub {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+        #loginBox input {
+            width: 100%;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            color: #1e293b;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        #loginBox input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+        #loginBox .login-btn {
+            width: 100%;
+            background: #1e293b;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 11px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+            margin-top: 4px;
+        }
+        #loginBox .login-btn:hover { background: #334155; }
+        #loginBox .login-err {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 6px;
+            min-height: 18px;
+        }
+        /* 右上角状态显示 */
+        #userTag {
+            display: none;
+            font-size: 11px;
+            color: #64748b;
+            background: #f1f5f9;
+            border-radius: 20px;
+            padding: 3px 10px;
+            white-space: nowrap;
+        }
+
         @media (max-width: 820px) {
             .header h1 {
                 font-size: 12px;
@@ -927,6 +1007,18 @@
 <body>
 
     <!-- ===== 顶部栏 ===== -->
+    <!-- ===== 登录弹窗 ===== -->
+    <div id="loginOverlay">
+        <div id="loginBox">
+            <div class="login-title">📖 古代汉语知识图谱</div>
+            <div class="login-sub">请填写信息后进入</div>
+            <input type="text" id="inputName" placeholder="请输入姓名（必填）" autocomplete="off" />
+            <input type="text" id="inputId" placeholder="请输入学号（必填）" autocomplete="off" />
+            <button class="login-btn" onclick="doLogin()">进入知识图谱</button>
+            <div class="login-err" id="loginErr"></div>
+        </div>
+    </div>
+
     <header class="header">
         <h1>📖 古代汉语 · 知识图谱 <span>全七课</span></h1>
         <div class="header-controls">
@@ -937,6 +1029,7 @@
                 <div class="search-results-overlay" id="searchResults"></div>
             </div>
             <button class="btn-primary" id="lessonToggle">📖 篇目</button>
+            <span id="userTag"></span>
         </div>
     </header>
 
@@ -2340,6 +2433,7 @@
                     } else {
                         currentFilters.add(val);
                         this.classList.add('active');
+                        trackLesson(val);
                     }
                 }
                 renderGraph();
@@ -2352,6 +2446,7 @@
                 const node = nodes.find(n => n.id === data.id);
                 if (!node || !node.raw) return;
                 if (node.raw.isTextCenter || node.raw.isBlock) return;
+                trackNodeClick(node.raw.label, node.raw.text);
                 showDetailPanel(node.raw);
                 setTimeout(function() {
                     document.getElementById('detailPanel').classList.add('open');
@@ -2660,6 +2755,7 @@
 
         function showCrossModal(label) {
             _currentCrossLabel = label;
+            trackCrossModal();
             switchModalTab('cross');
             const ids = labelMap[label] || [];
             if (ids.length < 2) {
@@ -2771,6 +2867,8 @@
                     const id = this.dataset.id;
                     const node = nodes.find(n => n.id === id);
                     if (node && node.raw) {
+                        trackSearch();
+                        trackNodeClick(node.raw.label, node.raw.text);
                         showDetailPanel(node.raw);
                         myChart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: nodes
                                 .findIndex(n => n.id === id) });
@@ -2847,6 +2945,7 @@
                     const id = this.dataset.id;
                     const node = rawNodes.find(n => n.id === id);
                     if (node) {
+                        trackNodeClick(node.label, node.text);
                         showDetailPanel(node);
                         document.getElementById('detailPanel').classList.add('open');
                     }
@@ -2861,6 +2960,131 @@
         updateCatBtnLabel();
         updateStatusBtnLabel();
         updateRelBtnLabel();
+
+
+        // ============================================================
+        // 追踪系统 & 登录逻辑
+        // ============================================================
+        const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSfGWFtXz-BE2samgDGGsfPJDlTpTYTqq5_7tBHIHhrSt_-rTQ/formResponse';
+        const ENTRY = {
+            name:       'entry.77813536',
+            id:         'entry.1610269156',
+            duration:   'entry.1934524694',
+            clickTotal: 'entry.1508232050',
+            clickDetail:'entry.207373936',
+            crossCount: 'entry.1247943582',
+            searchCount:'entry.438495123',
+            lessons:    'entry.1734886830',
+            submitTime: 'entry.429279962'
+        };
+
+        // 用户信息
+        let _userName = '';
+        let _userId = '';
+        let _sessionStart = null;
+
+        // 行为数据
+        let _clickTotal = 0;
+        let _clickDetail = [];      // [{label, lesson}]
+        let _crossCount = 0;
+        let _searchCount = 0;
+        let _lessonsUsed = new Set();
+
+        // 登录
+        function doLogin() {
+            const name = document.getElementById('inputName').value.trim();
+            const sid  = document.getElementById('inputId').value.trim();
+            if (!name) {
+                document.getElementById('loginErr').textContent = '请输入姓名';
+                return;
+            }
+            if (!sid) {
+                document.getElementById('loginErr').textContent = '请输入学号';
+                return;
+            }
+            _userName = name;
+            _userId   = sid;
+            _sessionStart = Date.now();
+            document.getElementById('loginOverlay').style.display = 'none';
+            const tag = document.getElementById('userTag');
+            tag.textContent = '👤 ' + name;
+            tag.style.display = 'inline-block';
+        }
+
+        // Enter键也可以提交登录
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.getElementById('loginOverlay').style.display !== 'none') {
+                doLogin();
+            }
+        });
+
+        // 记录节点点击
+        function trackNodeClick(nodeLabel, nodeLesson) {
+            if (!_sessionStart) return;
+            _clickTotal++;
+            _clickDetail.push(nodeLabel + '(' + nodeLesson + ')');
+            if (nodeLesson) _lessonsUsed.add(nodeLesson);
+        }
+
+        // 记录跨课关联使用
+        function trackCrossModal() {
+            if (!_sessionStart) return;
+            _crossCount++;
+        }
+
+        // 记录搜索使用
+        function trackSearch() {
+            if (!_sessionStart) return;
+            _searchCount++;
+        }
+
+        // 记录筛选篇目
+        function trackLesson(lessonName) {
+            if (!_sessionStart || !lessonName || lessonName === 'all') return;
+            _lessonsUsed.add(lessonName);
+        }
+
+        // 提交数据到 Google 表单
+        function submitData() {
+            if (!_sessionStart || !_userName) return;
+            const durationMin = Math.max(1, Math.round((Date.now() - _sessionStart) / 60000));
+            const now = new Date();
+            const timeStr = now.getFullYear() + '-'
+                + String(now.getMonth()+1).padStart(2,'0') + '-'
+                + String(now.getDate()).padStart(2,'0') + ' '
+                + String(now.getHours()).padStart(2,'0') + ':'
+                + String(now.getMinutes()).padStart(2,'0');
+
+            // 节点详情截断，避免超长
+            let detailStr = _clickDetail.slice(0, 60).join(' → ');
+            if (_clickDetail.length > 60) detailStr += '…(共' + _clickDetail.length + '次)';
+
+            const params = new URLSearchParams();
+            params.append(ENTRY.name,        _userName);
+            params.append(ENTRY.id,          _userId);
+            params.append(ENTRY.duration,    durationMin + '分钟');
+            params.append(ENTRY.clickTotal,  _clickTotal);
+            params.append(ENTRY.clickDetail, detailStr || '无');
+            params.append(ENTRY.crossCount,  _crossCount);
+            params.append(ENTRY.searchCount, _searchCount);
+            params.append(ENTRY.lessons,     [..._lessonsUsed].join('、') || '无');
+            params.append(ENTRY.submitTime,  timeStr);
+
+            // 用 fetch no-cors 方式提交（静默提交，不跳转）
+            fetch(FORM_BASE, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            }).catch(function() {});
+        }
+
+        // 离开页面时提交
+        window.addEventListener('beforeunload', submitData);
+        // 每5分钟自动备份提交一次（防止长时间使用后关闭没有触发beforeunload）
+        setInterval(function() {
+            if (_sessionStart && _userName) submitData();
+        }, 300000);
 
         console.log('📖 古代汉语知识图谱（全七课完整版）已加载');
         console.log(`共 ${nodes.length} 个节点，${edges.length} 条边`);
