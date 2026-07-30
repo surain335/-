@@ -3616,24 +3616,30 @@
             Object.keys(FORM_EXTRA_FIELDS).forEach(function(key) {
                 params.append(key, FORM_EXTRA_FIELDS[key]);
             });
+            // Google 表单原生提交按钮会携带这一参数。这里保留它，提高与正式表单提交的兼容性。
+            params.append('submit', 'Submit');
             return params;
         }
 
         // 使用浏览器原生HTML表单提交到隐藏iframe，一次只形成一条正式答卷。
-        // 注意：必须调用 HTMLFormElement.prototype.submit，避免表单中出现同名字段时覆盖 submit 方法。
+        // 重要修复：必须先等隐藏iframe完成第一次 about:blank 加载，再发出真正的表单请求。
+        // 旧代码可能把第一次空白页 load 误判为“提交完成”，随后过早删除iframe，导致Google表单没有收到数据。
         function submitViaHiddenForm(record) {
             return new Promise(function(resolve, reject) {
                 const iframe = document.createElement('iframe');
                 const frameName = 'google_form_target_' + Date.now() + '_' + Math.random().toString(36).slice(2);
                 iframe.name = frameName;
+                iframe.id = frameName;
                 iframe.style.display = 'none';
                 iframe.setAttribute('aria-hidden', 'true');
+                iframe.src = 'about:blank';
 
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = FORM_BASE;
                 form.target = frameName;
                 form.acceptCharset = 'UTF-8';
+                form.enctype = 'application/x-www-form-urlencoded';
                 form.style.display = 'none';
 
                 buildParams(record).forEach(function(value, key) {
@@ -3645,15 +3651,19 @@
                 });
 
                 let finished = false;
-                let requestStarted = false;
+                let submissionStarted = false;
+                let bootHandled = false;
                 let timer = null;
+                let bootTimer = null;
 
                 function cleanup() {
                     if (timer) clearTimeout(timer);
+                    if (bootTimer) clearTimeout(bootTimer);
+                    // 真正收到第二次load后，请求已经结束；仍稍作延迟再移除节点。
                     setTimeout(function() {
                         if (form.parentNode) form.parentNode.removeChild(form);
                         if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 800);
+                    }, 2500);
                 }
 
                 function finish(ok, error) {
@@ -3664,25 +3674,41 @@
                     else reject(error || new Error('Google 表单提交失败'));
                 }
 
-                // iframe 初始 about:blank 也会触发一次 load，只有正式发出请求后才视为完成。
+                function startSubmission() {
+                    if (submissionStarted || finished) return;
+                    submissionStarted = true;
+                    document.body.appendChild(form);
+                    try {
+                        // 使用原型方法，避免名为 submit 的隐藏字段覆盖 form.submit。
+                        HTMLFormElement.prototype.submit.call(form);
+                        // 跨域iframe不能读取Google返回内容；第二次load表示响应已完成。
+                        // 若浏览器不触发第二次load，则保留更长时间后按“请求已发出”处理。
+                        timer = setTimeout(function() { finish(true); }, 15000);
+                    } catch (error) {
+                        finish(false, error);
+                    }
+                }
+
                 iframe.addEventListener('load', function() {
-                    if (requestStarted) finish(true);
+                    if (!bootHandled) {
+                        bootHandled = true;
+                        startSubmission();
+                        return;
+                    }
+                    if (submissionStarted) finish(true);
                 });
+
                 iframe.addEventListener('error', function() {
-                    if (requestStarted) finish(false, new Error('Google 表单响应加载失败'));
+                    if (submissionStarted) finish(false, new Error('Google 表单响应加载失败'));
                 });
 
                 document.body.appendChild(iframe);
-                document.body.appendChild(form);
 
-                try {
-                    requestStarted = true;
-                    HTMLFormElement.prototype.submit.call(form);
-                    // 跨域 iframe 无法读取响应内容；请求发出后以超时作为成功兜底。
-                    timer = setTimeout(function() { finish(true); }, 8000);
-                } catch (error) {
-                    finish(false, error);
-                }
+                // 极少数浏览器不触发 about:blank 的第一次load，1秒后主动提交兜底。
+                bootTimer = setTimeout(function() {
+                    bootHandled = true;
+                    startSubmission();
+                }, 1000);
             });
         }
 
