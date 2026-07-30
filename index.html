@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>古代汉语知识图谱 · 全七课</title>
+    <title>古代汉语知识图谱 · 全七课（提交修复版）</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
     </script>
     <style>
@@ -1206,7 +1206,6 @@
                 <option value="">请选择班级（必填）</option>
                 <option value="班级1">班级1</option>
                 <option value="班级2">班级2</option>
-                <option value="班级3">班级3</option>
             </select>
             <button class="login-btn" onclick="doLogin()">进入知识图谱</button>
             <div class="login-err" id="loginErr"></div>
@@ -3102,8 +3101,7 @@
         const FORM_EXTRA_FIELDS = {
             fvv: '1',
             draftResponse: '[]',
-            pageHistory: '0',
-            submit: 'Submit'
+            pageHistory: '0'
         };
         // entry 编号严格按照用户提供的预填链接顺序对应17个问题。
         const ENTRY = {
@@ -3138,6 +3136,7 @@
         let _sessionStart = null;
         let _submitted = false;
         let _allowUnload = false;
+        let _leaveAttempted = false;
 
         // 有效学习时间：页面可见，且距最近一次交互不超过5分钟时累计。
         let _activeMs = 0;
@@ -3215,6 +3214,9 @@
             _sessionStart = Date.now();
             _lastTickAt = _sessionStart;
             _lastActivityAt = _sessionStart;
+            _submitted = false;
+            _allowUnload = false;
+            _leaveAttempted = false;
             document.getElementById('loginOverlay').style.display = 'none';
             const tag = document.getElementById('userTag');
             tag.textContent = '👤 ' + name + '｜' + cls + (IS_OFFICIAL_GITHUB ? '' : '｜🧪测试');
@@ -3618,6 +3620,7 @@
         }
 
         // 使用浏览器原生HTML表单提交到隐藏iframe，一次只形成一条正式答卷。
+        // 注意：必须调用 HTMLFormElement.prototype.submit，避免表单中出现同名字段时覆盖 submit 方法。
         function submitViaHiddenForm(record) {
             return new Promise(function(resolve, reject) {
                 const iframe = document.createElement('iframe');
@@ -3642,14 +3645,17 @@
                 });
 
                 let finished = false;
+                let requestStarted = false;
                 let timer = null;
+
                 function cleanup() {
                     if (timer) clearTimeout(timer);
                     setTimeout(function() {
                         if (form.parentNode) form.parentNode.removeChild(form);
                         if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-                    }, 500);
+                    }, 800);
                 }
+
                 function finish(ok, error) {
                     if (finished) return;
                     finished = true;
@@ -3658,21 +3664,22 @@
                     else reject(error || new Error('Google 表单提交失败'));
                 }
 
+                // iframe 初始 about:blank 也会触发一次 load，只有正式发出请求后才视为完成。
                 iframe.addEventListener('load', function() {
-                    if (form.dataset.submitted === '1') finish(true);
+                    if (requestStarted) finish(true);
                 });
                 iframe.addEventListener('error', function() {
-                    finish(false, new Error('Google 表单响应加载失败'));
+                    if (requestStarted) finish(false, new Error('Google 表单响应加载失败'));
                 });
 
                 document.body.appendChild(iframe);
                 document.body.appendChild(form);
-                form.dataset.submitted = '1';
 
                 try {
-                    form.submit();
-                    // 少数浏览器会阻止跨域iframe读取完成状态，请求发出后以超时作为完成兜底。
-                    timer = setTimeout(function() { finish(true); }, 6000);
+                    requestStarted = true;
+                    HTMLFormElement.prototype.submit.call(form);
+                    // 跨域 iframe 无法读取响应内容；请求发出后以超时作为成功兜底。
+                    timer = setTimeout(function() { finish(true); }, 8000);
                 } catch (error) {
                     finish(false, error);
                 }
@@ -3842,50 +3849,67 @@
             setTimeout(leaveLearningPage, 800);
         }
 
-        // 浏览器原生离开确认：只有正式GitHub网页启用；测试环境不会触发表单提交。
+        // 浏览器标签页右侧“×”属于浏览器界面，网页无法直接拦截并显示自定义弹窗。
+        // 可实现的方式是：先触发浏览器原生“是否离开”提示；若学生取消关闭，则立即显示本网页的结束学习弹窗。
         window.addEventListener('beforeunload', function(e) {
             if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            updateActiveTime();
+            _leaveAttempted = true;
+            // 如果学生选择“取消离开”，该自定义弹窗会留在页面上。
             showEndOverlay();
             e.preventDefault();
-            e.returnValue = '';
+            // 兼容 Chrome 等浏览器：必须赋予真值，浏览器才会显示原生离开确认。
+            e.returnValue = true;
+            return true;
         });
 
-        // 学生直接关闭正式网页时，使用 sendBeacon / keepalive 尝试提交一条正式记录。
-        window.addEventListener('pagehide', function() {
+        // 某些浏览器在取消关闭后才重新获得焦点，这里再次确保结束学习弹窗可见。
+        function showEndOverlayAfterCancelledClose() {
+            if (!_leaveAttempted || !IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            _leaveAttempted = false;
+            setTimeout(function() {
+                if (document.visibilityState === 'visible') showEndOverlay();
+            }, 60);
+        }
+        window.addEventListener('focus', showEndOverlayAfterCancelledClose);
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') showEndOverlayAfterCancelledClose();
+        });
+
+        // 学生确认关闭标签页、关闭整个浏览器或跳转离开正式网页时，尽最大可能提交当前记录。
+        // sendBeacon 专用于页面卸载时发送少量数据；失败时再使用 keepalive fetch 兜底。
+        function submitRecordOnPageExit() {
             if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            updateActiveTime();
             const record = buildRecord();
-            const payload = buildParams(record).toString();
+            const params = buildParams(record);
             let queued = false;
+
             try {
                 if (navigator.sendBeacon) {
-                    const blob = new Blob([payload], {
-                        type: 'application/x-www-form-urlencoded;charset=UTF-8'
-                    });
-                    queued = navigator.sendBeacon(FORM_BASE, blob);
+                    queued = navigator.sendBeacon(FORM_BASE, params);
                 }
-                if (!queued) {
-                    fetch(FORM_BASE, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        keepalive: true,
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                        body: payload
-                    }).catch(function() {});
-                }
-                _submitted = true;
             } catch (error) {
+                queued = false;
+            }
+
+            if (!queued) {
                 try {
                     fetch(FORM_BASE, {
                         method: 'POST',
                         mode: 'no-cors',
                         keepalive: true,
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                        body: payload
+                        body: params
                     }).catch(function() {});
-                    _submitted = true;
+                    queued = true;
                 } catch (ignore) {}
             }
-        });
+
+            // 避免 pagehide、unload 等相邻事件造成重复提交。
+            if (queued) _submitted = true;
+        }
+
+        window.addEventListener('pagehide', submitRecordOnPageExit);
 
         console.log('📖 古代汉语知识图谱（全七课完整版）已加载');
         console.log(`共 ${nodes.length} 个节点，${edges.length} 条边`);
