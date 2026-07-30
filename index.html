@@ -1041,7 +1041,8 @@
             color: #94a3b8;
             margin-bottom: 24px;
         }
-        #loginBox input {
+        #loginBox input,
+        #loginBox select {
             width: 100%;
             border: 1.5px solid #e2e8f0;
             border-radius: 10px;
@@ -1054,7 +1055,8 @@
             box-sizing: border-box;
             transition: border-color 0.2s;
         }
-        #loginBox input:focus {
+        #loginBox input:focus,
+        #loginBox select:focus {
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
         }
@@ -1200,7 +1202,12 @@
             <div class="login-sub">请填写信息后进入</div>
             <input type="text" id="inputName" placeholder="请输入姓名（必填）" autocomplete="off" />
             <input type="text" id="inputId" placeholder="请输入学号（必填）" autocomplete="off" />
-            <input type="text" id="inputClass" placeholder="请输入班级（必填）" autocomplete="off" />
+            <select id="inputClass" aria-label="请选择班级">
+                <option value="">请选择班级（必填）</option>
+                <option value="班级1">班级1</option>
+                <option value="班级2">班级2</option>
+                <option value="班级3">班级3</option>
+            </select>
             <button class="login-btn" onclick="doLogin()">进入知识图谱</button>
             <div class="login-err" id="loginErr"></div>
         </div>
@@ -2027,6 +2034,56 @@
         let currentHighlights = new Set();
         const lessonOrderArr = allLessonNames;
 
+
+        // 将多组筛选统一按“组内或、组间且”计算。
+        // 分类、文中功能现状、关联类型与跨课关联共同开启时，
+        // 一个知识节点必须同时满足所有已开启的筛选条件才会显示。
+        function expandSelectedRelationFilters(highlights) {
+            const relationGroups = {
+                '语义层': ['语义扩大', '语义缩小', '语义转移'],
+                '词类活用': ['词类活用·名作动', '词类活用·形作动', '词类活用·使动', '词类活用·名作状'],
+                '句式': ['省略句', '判断句', '让步句式', '被动句', '倒装句']
+            };
+            const expanded = [];
+            [...highlights].filter(h => h.startsWith('rel-')).forEach(function(h) {
+                const name = h.replace('rel-', '').replace(/・/g, '·');
+                const values = relationGroups[name] || [name];
+                values.forEach(function(value) {
+                    if (!expanded.includes(value)) expanded.push(value);
+                });
+            });
+            return expanded;
+        }
+
+        function knowledgeNodeMatchesHighlights(nodeData, highlights) {
+            const raw = nodeData && nodeData.raw;
+            if (!raw || raw.isTextCenter || raw.isBlock) return false;
+
+            const activeCats = [...highlights]
+                .filter(h => h.startsWith('cat-'))
+                .map(h => h.replace('cat-', ''));
+            const activeStatuses = [...highlights]
+                .filter(h => h.startsWith('status-'))
+                .map(h => h.replace('status-', ''));
+            const activeRelations = expandSelectedRelationFilters(highlights);
+            const hasCross = highlights.has('cross');
+
+            if (activeCats.length > 0 && !activeCats.includes(raw.category || '')) return false;
+
+            if (activeStatuses.length > 0) {
+                const statuses = getNodeStatuses(raw);
+                if (!activeStatuses.some(status => statuses.includes(status))) return false;
+            }
+
+            if (activeRelations.length > 0) {
+                const relations = getNodeRelations(raw);
+                if (!activeRelations.some(target => relationMatches(relations, target))) return false;
+            }
+
+            if (hasCross && !isCrossKnowledgeNode(raw)) return false;
+            return true;
+        }
+
         // 核心渲染函数
         function buildOption(nodesData, edgesData, highlights) {
             const isHighlightActive = highlights.size > 0;
@@ -2034,65 +2091,7 @@
                 let itemStyle = { ...n.itemStyle };
                 let labelStyle = { ...n.label };
                 let symbolSize = n.symbolSize;
-                const isMatch = n.raw && !n.raw.isTextCenter && !n.raw.isBlock && (() => {
-                    const cat = n.raw.category || '';
-                    let nodeStatus = n.raw.status || '';
-                    const nodeRelFull = n.raw.relationFull || '';
-                    const nodeRelArr = nodeRelFull.split(/[；;、]/).map(r => r.trim()).filter(Boolean);
-                    if (n._relation && !nodeRelArr.includes(n._relation)) nodeRelArr.push(n._relation);
-                    if (n.raw.entries) {
-                        n.raw.entries.forEach(e => {
-                            if (e.status && !nodeStatus) nodeStatus = e.status;
-                            if (e.relationFull) {
-                                e.relationFull.split(/[；;、]/).map(r => r.trim()).filter(Boolean).forEach(r => {
-                                    if (!nodeRelArr.includes(r)) nodeRelArr.push(r);
-                                });
-                            }
-                        });
-                    }
-                    const activeCats = [...highlights].filter(h => h.startsWith('cat-'));
-                    const activeStatus = [...highlights].filter(h => h.startsWith('status-'));
-                    const activeRels = [...highlights].filter(h => h.startsWith('rel-'));
-                    const hasCross = highlights.has('cross');
-                    if (activeCats.length === 0 && activeStatus.length === 0 && activeRels.length === 0 && !hasCross)
-                        return false;
-                    if (activeCats.length > 0 && !activeCats.some(h => h === 'cat-' + cat)) return false;
-                    if (activeStatus.length > 0 && !activeStatus.some(h => h === 'status-' + nodeStatus)) return false;
-                    if (activeRels.length > 0) {
-                        const expanded = [];
-                        activeRels.forEach(h => {
-                            const k = h.replace('rel-', '');
-                            if (typeof REL_GROUPS !== 'undefined' && REL_GROUPS['rel-' + k]) {
-                                REL_GROUPS['rel-' + k].forEach(s => expanded.push(s.replace('rel-', '')));
-                            } else expanded.push(k);
-                        });
-                        if (!expanded.some(r => nodeRelArr.some(nr => nr === r || nr.replace('・', '·') === r)))
-                            return false;
-                    }
-                    if (hasCross) {
-                        const baseL = n.raw.baseLabel || n.raw.label;
-                        const allIds = labelMap[baseL] || [];
-                        if (allIds.length < 2) return false;
-                        const allLessons = new Set();
-                        allIds.forEach(id => {
-                            const nn = rawNodes.find(r => r.id === id);
-                            if (nn && !nn.isTextCenter && !nn.isBlock) allLessons.add(nn.text);
-                        });
-                        if (allLessons.size < 2) return false;
-                        const isAllFilter = currentFilters.has('all');
-                        if (isAllFilter) {
-                            return true;
-                        } else {
-                            const currentLesson = n.raw.text;
-                            if (!allLessons.has(currentLesson)) return false;
-                            const sorted = lessonOrderArr.filter(ls => allLessons.has(ls));
-                            const idxInCross = sorted.indexOf(currentLesson);
-                            if (idxInCross > 0) return true;
-                            return false;
-                        }
-                    }
-                    return true;
-                })();
+                const isMatch = Boolean(n._isFilterMatch);
                 if (isHighlightActive) {
                     if (isMatch) {
                         itemStyle = { ...itemStyle, borderColor: '#ef4444', borderWidth: 3, shadowBlur: 12,
@@ -2110,10 +2109,13 @@
             const processedEdges = edgesData.map(e => {
                 let lineStyle = { ...e.lineStyle };
                 if (isHighlightActive) {
-                    if (highlights.has('cross') && e.isCross) {
+                    // renderGraph 已经移除了不符合条件的节点和连线；这里只设置保留下来的线条样式。
+                    if (e.isCross) {
                         lineStyle = { ...lineStyle, width: 4, opacity: 1, color: '#ef4444' };
                     } else {
-                        lineStyle = { ...lineStyle, opacity: 0.08 };
+                        // 筛选状态下隐藏普通层级连线，只保留符合条件的跨课关联红线，
+                        // 避免课文中心、板块与知识节点之间的灰蓝色背景线干扰观察。
+                        lineStyle = { ...lineStyle, width: 0, opacity: 0 };
                     }
                 }
                 return { ...e, lineStyle };
@@ -2200,53 +2202,68 @@
         }
 
         function renderGraph() {
-            let filteredNodes = nodes;
-            if (!currentFilters.has('all') && currentFilters.size > 0) {
-                filteredNodes = nodes.filter(n => n.raw && currentFilters.has(n.raw.text));
-            }
-            // 跨课关联+分类筛选：
-            // 目标分类节点作为主体保留；同时补回与其存在跨课关联的另一端节点，
-            // 以保证跨课关联线完整显示。补回节点只用于形成关联，不生成其他类别跨课线。
-            let crossCategoryMainIds = null;
-            if (currentHighlights.has('cross')) {
-                const activeCats = [...currentHighlights]
-                    .filter(h => h.startsWith('cat-'))
-                    .map(h => h.replace('cat-', ''));
-                if (activeCats.length > 0) {
-                    const mainNodes = nodes.filter(n => {
-                        if (!n.raw || n.raw.isTextCenter || n.raw.isBlock) return false;
-                        return activeCats.includes(n.raw.category);
-                    });
-                    const mainIds = new Set(mainNodes.map(n => n.id));
-                    const relatedIds = new Set();
+            // 先应用篇目范围；篇目筛选之外的节点不参与组合筛选。
+            const lessonScopedNodes = (!currentFilters.has('all') && currentFilters.size > 0)
+                ? nodes.filter(n => n.raw && currentFilters.has(n.raw.text))
+                : nodes.slice();
+            const lessonScopedIds = new Set(lessonScopedNodes.map(n => n.id));
+            const hasKnowledgeFilter = currentHighlights.size > 0;
 
-                    edges.forEach(e => {
-                        if (!e.isCross) return;
-                        if (mainIds.has(e.source)) relatedIds.add(e.target);
-                        if (mainIds.has(e.target)) relatedIds.add(e.source);
-                    });
+            // 每次重绘先清空旧状态，防止上一次筛选残留。
+            nodes.forEach(function(n) {
+                n._isFilterMatch = false;
+                n._isHighlightMatch = false;
+            });
 
-                    const keepIds = new Set([...mainIds, ...relatedIds]);
-                    filteredNodes = nodes.filter(n => keepIds.has(n.id));
-                    crossCategoryMainIds = mainIds;
-                }
+            let filteredNodes = lessonScopedNodes;
+            let filteredEdges;
+
+            if (!hasKnowledgeFilter) {
+                // 未开启高亮筛选时，保持原有完整图谱。
+                filteredEdges = edges.filter(e => lessonScopedIds.has(e.source) && lessonScopedIds.has(e.target));
+            } else {
+                // 知识节点必须同时满足所有已开启的筛选组。
+                const matchedKnowledgeNodes = lessonScopedNodes.filter(function(n) {
+                    const matched = knowledgeNodeMatchesHighlights(n, currentHighlights);
+                    n._isFilterMatch = matched;
+                    n._isHighlightMatch = matched;
+                    return matched;
+                });
+
+                // 只补回匹配节点所属的板块节点和篇目中心，方便看清层级关系；
+                // 其他未匹配的知识节点不会显示。
+                const visibleIds = new Set();
+                matchedKnowledgeNodes.forEach(function(n) {
+                    visibleIds.add(n.id);
+                    const raw = n.raw;
+                    const blockId = getBlockId(raw.text, raw.category);
+                    const centerId = getTextCenterId(raw.text);
+                    if (blockId && lessonScopedIds.has(blockId)) visibleIds.add(blockId);
+                    if (centerId && lessonScopedIds.has(centerId)) visibleIds.add(centerId);
+                });
+
+                filteredNodes = lessonScopedNodes.filter(n => visibleIds.has(n.id));
+
+                // 线条必须两端都仍然可见：
+                // 1) 普通层级线只连接保留下来的中心、板块和匹配节点；
+                // 2) 跨课线只有在开启“跨课关联”且两端节点都通过全部组合筛选时才显示。
+                filteredEdges = edges.filter(function(e) {
+                    if (!visibleIds.has(e.source) || !visibleIds.has(e.target)) return false;
+                    if (!e.isCross) return true;
+                    if (!currentHighlights.has('cross')) return false;
+                    const sourceNode = nodes.find(n => n.id === e.source);
+                    const targetNode = nodes.find(n => n.id === e.target);
+                    return Boolean(sourceNode && targetNode && sourceNode._isFilterMatch && targetNode._isFilterMatch);
+                });
             }
-            const nodeIds = new Set(filteredNodes.map(n => n.id));
-            let filteredEdges = edges.filter(e => {
-                if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) return false;
-                if (crossCategoryMainIds) {
-                    // 分类+跨课模式下，只显示与目标分类节点有关的跨课线
-                    return e.isCross && 
-                        (crossCategoryMainIds.has(e.source) || crossCategoryMainIds.has(e.target));
-                }
-                return true;
+
+            // 只给当前篇目范围内真正具有跨课同形关系的知识节点打标记。
+            filteredNodes.forEach(function(n) {
+                n._isCrossNode = Boolean(
+                    n.raw && !n.raw.isTextCenter && !n.raw.isBlock && isCrossKnowledgeNode(n.raw)
+                );
             });
-            const crossLabels = new Set();
-            edges.forEach(e => { if (e.isCross) crossLabels.add(e.crossLabel); });
-            filteredNodes.forEach(n => {
-                const bl = n.raw ? (n.raw.baseLabel || n.raw.label) : '';
-                n._isCrossNode = crossLabels.has(bl) && !n.raw.isTextCenter && !n.raw.isBlock;
-            });
+
             const option = buildOption(filteredNodes, filteredEdges, currentHighlights);
             myChart.setOption(option, true);
             myChart.resize();
@@ -2478,6 +2495,9 @@
             if (params.dataType === 'edge') {
                 const edge = params.data;
                 if (edge.isCross && edge.crossLabel && currentHighlights.has('cross')) {
+                    // 每次点击红色跨课连线并打开弹窗，都视为对该知识点的一次完整学习：
+                    // 浏览知识节点、所属板块、使用跨课关联次数、跨课关联讲解次数均同步 +1。
+                    trackCrossModal(edge.crossLabel, edge);
                     showCrossModal(edge.crossLabel);
                 }
             }
@@ -3075,40 +3095,39 @@
 
 
         // ============================================================
-        // 追踪系统 & 登录逻辑（论文实验版）
+        // 追踪系统 & 登录逻辑（新表单17项正式版）
         // ============================================================
-        const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSfGWFtXz-BE2samgDGGsfPJDlTpTYTqq5_7tBHIHhrSt_-rTQ/formResponse';
+        const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSf0eYr1g3pObZpUakNI5rIb37aO6uzJxniekZ-tv0i2euZd0w/formResponse';
+        // 新表单为单页表单。测试环境只生成17项预览；仅 github.io 正式网页提交。
+        const FORM_EXTRA_FIELDS = {
+            fvv: '1',
+            draftResponse: '[]',
+            pageHistory: '0',
+            submit: 'Submit'
+        };
+        // entry 编号严格按照用户提供的预填链接顺序对应17个问题。
         const ENTRY = {
-            classname:          'entry.370994464',
-            name:               'entry.77813536',
-            id:                 'entry.1610269156',
-            duration:           'entry.1934524694',
-            clickTotal:         'entry.1508232050',
-            searchCount:        'entry.207373936',
-            crossCount:         'entry.1247943582',
-            catReal:            'entry.438495123',
-            catFunction:        'entry.1734886830',
-            catFixed:           'entry.429279962',
-            catSentence:        'entry.385123457',
-            catCulture:         'entry.1683310064',
-            relSemantic:        'entry.12002232',
-            relTongjia:         'entry.372039307',
-            relGujin:           'entry.1331732220',
-            relPolyphonic:      'entry.1912726191',
-            relHomograph:       'entry.612898255',
-            relWordClass:       'entry.408307682',
-            relSentence:        'entry.171021295',
-            statusStable:       'entry.840428416',
-            statusDecline:      'entry.1375695161',
-            statusRestricted:   'entry.1451146837',
-            nodeSummary:        'entry.743010194',
-            categorySummary:    'entry.544035139',
-            pathSummary:        'entry.544872953',
-            lessons:            'entry.1137559772'
+            classname:               'entry.891985639',
+            name:                    'entry.1115800212',
+            id:                      'entry.529326657',
+            duration:                'entry.992958525',
+            totalUnique:             'entry.2121246081',
+            categoryDistribution:    'entry.1235547359',
+            statusDistribution:      'entry.1236704986',
+            relationDistribution:    'entry.2125822121',
+            crossUnique:             'entry.981991857',
+            crossLectureUnique:      'entry.875677297',
+            lessonDistribution:      'entry.666094109',
+            overallTop10:            'entry.597480083',
+            statusTop10:             'entry.1024582454',
+            crossTop10:              'entry.2120574130',
+            crossLectureTop10:       'entry.2133013974',
+            searchUnique:            'entry.1116517432',
+            searchClickCount:        'entry.936590592'
         };
 
         // 只有部署到 GitHub Pages 的正式网页才提交 Google 表单。
-        // 本地 file://、localhost 和普通预览环境均为测试模式，只显示本次数据。
+        // file://、localhost、ChatGPT预览以及其他域名均为本地测试模式，绝不提交。
         const IS_OFFICIAL_GITHUB = /(^|\.)github\.io$/i.test(window.location.hostname);
         const IDLE_LIMIT_MS = 5 * 60 * 1000;
 
@@ -3125,15 +3144,23 @@
         let _lastTickAt = 0;
         let _lastActivityAt = 0;
 
-        // 行为数据
-        let _clickTotal = 0;
-        let _searchCount = 0;
-        let _crossCount = 0;
+        const CATEGORY_ORDER = ['实词', '虚词', '固定格式', '句式', '文化'];
+        const STATUS_ORDER = ['稳定', '频率下降', '受限'];
+        const RELATION_ORDER = ['语义层', '通假字', '古今字', '多音多义', '异词同形', '词类活用', '句式'];
+
+        // 独立知识点集合：同一“标准词目＋基础分类”无论点击多少次、从多少角度学习，只算一次。
+        const _allUnique = new Set();
+        const _categoryUnique = Object.fromEntries(CATEGORY_ORDER.map(function(name) { return [name, new Set()]; }));
+        const _statusUnique = Object.fromEntries(STATUS_ORDER.map(function(name) { return [name, new Set()]; }));
+        const _relationUnique = Object.fromEntries(RELATION_ORDER.map(function(name) { return [name, new Set()]; }));
+        const _crossUnique = new Set();
+        const _crossLectureUnique = new Set();
+        const _searchUnique = new Set();
+        const _lessonUnique = Object.fromEntries(allLessonNames.map(function(name) { return [name, new Set()]; }));
+
+        // 点击次数：用于全部、现状、跨课关联和跨课讲解的TOP10；搜索点击单独计总次数。
         const _clickEvents = [];
-        const _lessonsUsed = new Set();
-        const _categoryCounts = { '实词': 0, '虚词': 0, '固定格式': 0, '句式': 0, '文化': 0 };
-        const _relationCounts = { '语义层': 0, '通假字': 0, '古今字': 0, '多音多义': 0, '异词同形': 0, '词类活用': 0, '句式': 0 };
-        const _statusCounts = { '稳定': 0, '频率下降': 0, '受限': 0 };
+        let _searchClickCount = 0;
 
         function updateActiveTime(now) {
             if (!_sessionStart) return;
@@ -3167,9 +3194,9 @@
 
         // 登录
         function doLogin() {
-            const name  = document.getElementById('inputName').value.trim();
-            const sid   = document.getElementById('inputId').value.trim();
-            const cls   = document.getElementById('inputClass').value.trim();
+            const name = document.getElementById('inputName').value.trim();
+            const sid = document.getElementById('inputId').value.trim();
+            const cls = document.getElementById('inputClass').value.trim();
             if (!name) {
                 document.getElementById('loginErr').textContent = '请输入姓名';
                 return;
@@ -3182,8 +3209,8 @@
                 document.getElementById('loginErr').textContent = '请输入班级';
                 return;
             }
-            _userName  = name;
-            _userId    = sid;
+            _userName = name;
+            _userId = sid;
             _userClass = cls;
             _sessionStart = Date.now();
             _lastTickAt = _sessionStart;
@@ -3240,9 +3267,28 @@
             });
         }
 
+        function getKnowledgeLabel(node) {
+            if (!node) return '';
+            return String(node.baseLabel || node.label || '').trim();
+        }
+
+        function getKnowledgeKey(node) {
+            if (!node) return '';
+            const label = getKnowledgeLabel(node);
+            const category = String(node.category || '').trim();
+            if (!label || !category) return '';
+            return label + '||' + category;
+        }
+
+        function getKnowledgeDisplay(node) {
+            const label = getKnowledgeLabel(node);
+            const category = String(node && node.category || '').trim();
+            return category ? label + '（' + category + '）' : label;
+        }
+
         function isCrossKnowledgeNode(node) {
             if (!node) return false;
-            const base = node.baseLabel || node.label;
+            const base = getKnowledgeLabel(node);
             const ids = labelMap[base] || [];
             const lessons = new Set();
             ids.forEach(function(id) {
@@ -3252,134 +3298,230 @@
             return lessons.size >= 2;
         }
 
-        function selectedFilterContext(node, source) {
-            const parts = [];
+        function getMatchedSelectedStatuses(nodes) {
             const active = Array.from(currentHighlights);
-            const relations = getNodeRelations(node);
-            const statuses = getNodeStatuses(node);
-
-            const activeCats = active
-                .filter(function(v) { return v.startsWith('cat-'); })
-                .map(function(v) { return v.replace('cat-', ''); })
-                .filter(function(cat) { return node.category === cat; });
-            if (activeCats.length) parts.push('分类-' + activeCats.join('/'));
-
-            if (active.includes('cross') && isCrossKnowledgeNode(node)) parts.push('跨课关联');
-
-            const semanticSelected = ['语义扩大', '语义缩小', '语义转移'].filter(function(name) {
-                return active.includes('rel-' + name) && relationMatches(relations, name);
+            const matched = [];
+            STATUS_ORDER.forEach(function(status) {
+                if (!active.includes('status-' + status)) return;
+                const hasMatch = nodes.some(function(node) { return getNodeStatuses(node).includes(status); });
+                if (hasMatch) matched.push(status);
             });
-            if (semanticSelected.length) parts.push('关联-语义层');
+            return matched;
+        }
+
+        function getMatchedSelectedRelationGroups(nodes) {
+            const active = Array.from(currentHighlights);
+            const matched = [];
+            const allRelations = [];
+            nodes.forEach(function(node) {
+                getNodeRelations(node).forEach(function(rel) {
+                    if (!allRelations.includes(rel)) allRelations.push(rel);
+                });
+            });
+
+            const semanticSelected = ['语义扩大', '语义缩小', '语义转移'].some(function(name) {
+                return active.includes('rel-' + name) && relationMatches(allRelations, name);
+            });
+            if (semanticSelected) matched.push('语义层');
 
             ['通假字', '古今字', '多音多义', '异词同形'].forEach(function(name) {
-                if (active.includes('rel-' + name) && relationMatches(relations, name)) parts.push('关联-' + name);
+                if (active.includes('rel-' + name) && relationMatches(allRelations, name)) matched.push(name);
             });
 
-            const wordClassSelected = active.some(function(v) {
-                return v.startsWith('rel-词类活用') && relations.some(function(rel) {
-                    const target = v.replace('rel-', '');
+            const wordClassSelected = active.some(function(value) {
+                if (!value.startsWith('rel-词类活用')) return false;
+                const target = value.replace('rel-', '');
+                return allRelations.some(function(rel) {
                     return relationMatches([rel], target) || rel.startsWith('词类活用');
                 });
             });
-            if (wordClassSelected) parts.push('关联-词类活用');
+            if (wordClassSelected) matched.push('词类活用');
 
             const sentenceSelected = ['省略句', '判断句', '让步句式', '被动句', '倒装句'].some(function(name) {
-                return active.includes('rel-' + name) && relationMatches(relations, name);
+                return active.includes('rel-' + name) && relationMatches(allRelations, name);
             });
-            if (sentenceSelected) parts.push('关联-句式');
+            if (sentenceSelected) matched.push('句式');
 
-            statuses.forEach(function(status) {
-                if (active.includes('status-' + status)) parts.push('现状-' + status);
-            });
+            return Array.from(new Set(matched));
+        }
 
-            if (!currentFilters.has('all') && currentFilters.has(node.text)) parts.push('篇目-' + node.text);
+        function selectedFilterContext(nodes, source, isCrossEvent) {
+            const parts = [];
+            const active = Array.from(currentHighlights);
+            const primary = nodes[0];
+
+            const activeCats = active
+                .filter(function(value) { return value.startsWith('cat-'); })
+                .map(function(value) { return value.replace('cat-', ''); })
+                .filter(function(cat) { return nodes.some(function(node) { return node.category === cat; }); });
+            if (activeCats.length) parts.push('分类-' + activeCats.join('/'));
+
+            if (isCrossEvent) parts.push('跨课关联');
+            getMatchedSelectedRelationGroups(nodes).forEach(function(group) { parts.push('关联-' + group); });
+            getMatchedSelectedStatuses(nodes).forEach(function(status) { parts.push('现状-' + status); });
+
+            if (primary && !currentFilters.has('all') && currentFilters.has(primary.text)) {
+                parts.push('篇目-' + primary.text);
+            }
             if (source === '搜索') parts.push('搜索');
             else if (source === '目录') parts.push('目录');
+            else if (source === '跨课关联讲解') parts.push('跨课关联讲解');
             if (parts.length === 0) parts.push('自由浏览');
             return Array.from(new Set(parts)).join('+');
         }
 
-        // 每点击一个真实知识节点，记为一次知识学习行为。
-        // 分类、关联类型、文中功能现状和跨课关联的次数，都只统计相应筛选状态下的节点点击。
-        function trackNodeClick(node, source) {
-            if (!_sessionStart || !node || node.isTextCenter || node.isBlock) return;
-            markActivity();
-            _clickTotal++;
-            if (node.text) _lessonsUsed.add(node.text);
+        function addKnowledgeToUniqueSets(node, options) {
+            const key = getKnowledgeKey(node);
+            if (!key) return;
+            const config = options || {};
 
-            const active = Array.from(currentHighlights);
-            const relations = getNodeRelations(node);
-            const statuses = getNodeStatuses(node);
+            _allUnique.add(key);
+            if (_categoryUnique[node.category]) _categoryUnique[node.category].add(key);
 
-            Object.keys(_categoryCounts).forEach(function(category) {
-                if (active.includes('cat-' + category) && node.category === category) {
-                    _categoryCounts[category]++;
-                }
+            (config.statuses || []).forEach(function(status) {
+                if (_statusUnique[status]) _statusUnique[status].add(key);
             });
-
-            if (active.includes('cross') && isCrossKnowledgeNode(node)) _crossCount++;
-
-            const semanticSelected = ['语义扩大', '语义缩小', '语义转移'].some(function(name) {
-                return active.includes('rel-' + name) && relationMatches(relations, name);
+            (config.relations || []).forEach(function(group) {
+                if (_relationUnique[group]) _relationUnique[group].add(key);
             });
-            if (semanticSelected) _relationCounts['语义层']++;
+            if (config.isCross) _crossUnique.add(key);
+            if (config.isCrossLecture) _crossLectureUnique.add(key);
+            if (config.isSearch) _searchUnique.add(key);
 
-            ['通假字', '古今字', '多音多义', '异词同形'].forEach(function(name) {
-                if (active.includes('rel-' + name) && relationMatches(relations, name)) {
-                    _relationCounts[name]++;
-                }
+            (config.lessons || []).forEach(function(lesson) {
+                if (_lessonUnique[lesson]) _lessonUnique[lesson].add(key);
             });
+        }
 
-            const wordClassSelected = active.some(function(v) {
-                if (!v.startsWith('rel-词类活用')) return false;
-                const target = v.replace('rel-', '');
-                return relations.some(function(rel) {
-                    return relationMatches([rel], target) || rel.startsWith('词类活用');
-                });
-            });
-            if (wordClassSelected) _relationCounts['词类活用']++;
-
-            const sentenceSelected = ['省略句', '判断句', '让步句式', '被动句', '倒装句'].some(function(name) {
-                return active.includes('rel-' + name) && relationMatches(relations, name);
-            });
-            if (sentenceSelected) _relationCounts['句式']++;
-
-            Object.keys(_statusCounts).forEach(function(status) {
-                if (active.includes('status-' + status) && statuses.includes(status)) {
-                    _statusCounts[status]++;
-                }
-            });
-
+        function pushClickEvent(node, options) {
+            const config = options || {};
+            const key = getKnowledgeKey(node);
+            if (!key) return;
             _clickEvents.push({
-                label: node.label || '',
-                lesson: node.text || '',
+                key: key,
+                display: getKnowledgeDisplay(node),
+                label: getKnowledgeLabel(node),
                 category: node.category || '',
-                source: source || '图谱',
-                context: selectedFilterContext(node, source || '图谱'),
+                lessons: (config.lessons || []).slice(),
+                source: config.source || '图谱',
+                statuses: (config.statuses || []).slice(),
+                relations: (config.relations || []).slice(),
+                isCross: !!config.isCross,
+                isCrossLecture: !!config.isCrossLecture,
+                context: selectedFilterContext(config.contextNodes || [node], config.source || '图谱', !!config.isCross),
                 at: Date.now()
             });
         }
 
-        // 连线讲解不另行计数；跨课关联次数只由跨课关联筛选状态下的节点点击产生。
-        function trackCrossModal() {}
+        // 点击真实知识节点：
+        // 1. 总数和五大分类按“独立知识点”去重；
+        // 2. 现状、关联类型、跨课关联仅在对应筛选状态下计入；
+        // 3. 点击事件仍完整保留，用于各类TOP10。
+        function trackNodeClick(node, source) {
+            if (!_sessionStart || !node || node.isTextCenter || node.isBlock) return;
+            markActivity();
 
-        // 搜索次数按“点击一条搜索结果并打开知识点”计算。
+            const nodesForContext = [node];
+            const statuses = getMatchedSelectedStatuses(nodesForContext);
+            const relations = getMatchedSelectedRelationGroups(nodesForContext);
+            const isCross = currentHighlights.has('cross') && isCrossKnowledgeNode(node);
+            const isSearch = source === '搜索';
+            const lessons = node.text ? [node.text] : [];
+
+            addKnowledgeToUniqueSets(node, {
+                statuses: statuses,
+                relations: relations,
+                isCross: isCross,
+                isCrossLecture: false,
+                isSearch: isSearch,
+                lessons: lessons
+            });
+
+            pushClickEvent(node, {
+                source: source || '图谱',
+                statuses: statuses,
+                relations: relations,
+                isCross: isCross,
+                isCrossLecture: false,
+                lessons: lessons,
+                contextNodes: nodesForContext
+            });
+        }
+
+        // 取得红色跨课连线对应的全部知识节点。用于继承当前组合筛选，并把同一知识点计入相关篇目。
+        function resolveCrossLectureNodes(label, edge) {
+            const found = [];
+            const seen = new Set();
+            function addNode(node) {
+                if (!node || node.isTextCenter || node.isBlock || seen.has(node.id)) return;
+                if (getKnowledgeLabel(node) !== label) return;
+                seen.add(node.id);
+                found.push(node);
+            }
+
+            if (edge) {
+                [edge.source, edge.target].forEach(function(id) {
+                    addNode(rawNodes.find(function(item) { return item.id === id; }));
+                });
+            }
+            (labelMap[label] || []).forEach(function(id) {
+                addNode(rawNodes.find(function(item) { return item.id === id; }));
+            });
+            return found;
+        }
+
+        // 点击红色跨课连线：视为一次知识点学习。
+        // 它同时计入总独立知识点、基础分类、跨课关联、跨课讲解，
+        // 并继承点击当时已经选择且与该知识点匹配的现状和关联类型筛选。
+        function trackCrossModal(label, edge) {
+            if (!_sessionStart || !label) return;
+            markActivity();
+
+            const relatedNodes = resolveCrossLectureNodes(label, edge);
+            const node = relatedNodes[0];
+            if (!node) return;
+
+            const statuses = getMatchedSelectedStatuses(relatedNodes);
+            const relations = getMatchedSelectedRelationGroups(relatedNodes);
+            const lessons = Array.from(new Set(relatedNodes.map(function(item) { return item.text; }).filter(Boolean)));
+
+            addKnowledgeToUniqueSets(node, {
+                statuses: statuses,
+                relations: relations,
+                isCross: true,
+                isCrossLecture: true,
+                isSearch: false,
+                lessons: lessons
+            });
+
+            pushClickEvent(node, {
+                source: '跨课关联讲解',
+                statuses: statuses,
+                relations: relations,
+                isCross: true,
+                isCrossLecture: true,
+                lessons: lessons,
+                contextNodes: relatedNodes
+            });
+        }
+
+        // 搜索点击次数按“点击一条搜索结果并成功打开知识点”计算。
+        // 搜索打开的独立知识点由 trackNodeClick(source='搜索') 自动去重记录。
         function trackSearch() {
             if (!_sessionStart) return;
             markActivity();
-            _searchCount++;
+            _searchClickCount++;
         }
 
-        // 记录筛选篇目，供路径和篇目分析参考；篇目排名仍按知识节点点击次数计算。
+        // 切换篇目筛选本身不算学习知识点，只作为交互活动维持有效学习计时。
         function trackLesson(lessonName) {
             if (!_sessionStart || !lessonName || lessonName === 'all') return;
             markActivity();
-            _lessonsUsed.add(lessonName);
         }
 
-        function countMap(arr, keyFn) {
+        function countMap(items, keyFn) {
             const map = new Map();
-            arr.forEach(function(item) {
+            items.forEach(function(item) {
                 const key = keyFn(item);
                 if (!key) return;
                 map.set(key, (map.get(key) || 0) + 1);
@@ -3398,52 +3540,42 @@
 
         function formatTop(entries) {
             if (!entries.length) return '无';
-            return entries.map(function(item) { return item[0] + '×' + item[1]; }).join('、');
+            return entries.map(function(item) { return item[0] + '×' + item[1]; }).join('；');
         }
 
-        function buildNodeSummary() {
-            const overall = sortedTop(countMap(_clickEvents, function(e) { return e.label; }), 10);
-            const parts = ['总TOP10：' + formatTop(overall)];
-            ['实词', '虚词', '固定格式', '句式', '文化'].forEach(function(category) {
-                const map = countMap(_clickEvents.filter(function(e) { return e.category === category; }), function(e) { return e.label; });
-                parts.push(category + 'TOP10：' + formatTop(sortedTop(map, 10)));
-            });
-            return parts.join('｜');
-        }
-
-        function buildCategorySummary() {
-            return ['实词', '虚词', '固定格式', '句式', '文化']
-                .map(function(name) { return name + '×' + _categoryCounts[name]; })
-                .join('、');
-        }
-
-        function buildLessonSummary() {
-            const map = countMap(_clickEvents, function(e) { return e.lesson; });
-            return formatTop(sortedTop(map, allLessonNames.length));
-        }
-
-        function buildPathSummary() {
-            if (_clickEvents.length === 0) return '无';
-            const groups = [];
-            _clickEvents.forEach(function(event) {
-                let group = groups[groups.length - 1];
-                if (!group || group.context !== event.context) {
-                    group = { context: event.context, nodes: [] };
-                    groups.push(group);
-                }
-                group.nodes.push(event.label);
-            });
-
-            // 合并连续重复节点，保留真实访问顺序；最多展示前8段，每段最多8个节点。
-            return groups.slice(0, 8).map(function(group, index) {
-                const sequence = [];
-                group.nodes.forEach(function(label) {
-                    if (sequence[sequence.length - 1] !== label) sequence.push(label);
+        function formatUniqueDistribution(order, setMap) {
+            const indexed = new Map(order.map(function(name, index) { return [name, index]; }));
+            const items = order
+                .map(function(name) { return [name, setMap[name] ? setMap[name].size : 0]; })
+                .filter(function(item) { return item[1] > 0; })
+                .sort(function(a, b) {
+                    if (b[1] !== a[1]) return b[1] - a[1];
+                    return indexed.get(a[0]) - indexed.get(b[0]);
                 });
-                const shown = sequence.slice(0, 8);
-                const suffix = sequence.length > 8 ? '→…' : '';
-                return (index + 1) + '.' + group.context + '：' + shown.join('→') + suffix;
-            }).join('；');
+            return items.length ? items.map(function(item) { return item[0] + '×' + item[1]; }).join('；') : '无';
+        }
+
+        function buildOverallTop10() {
+            return formatTop(sortedTop(countMap(_clickEvents, function(event) { return event.display; }), 10));
+        }
+
+        function buildStatusTop10() {
+            const events = _clickEvents.filter(function(event) { return event.statuses.length > 0; });
+            return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
+        }
+
+        function buildCrossTop10() {
+            const events = _clickEvents.filter(function(event) { return event.isCross; });
+            return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
+        }
+
+        function buildCrossLectureTop10() {
+            const events = _clickEvents.filter(function(event) { return event.isCrossLecture; });
+            return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
+        }
+
+        function buildLessonDistribution() {
+            return formatUniqueDistribution(allLessonNames, _lessonUnique);
         }
 
         function getEffectiveMinutes() {
@@ -3458,28 +3590,19 @@
                 name: _userName,
                 id: _userId,
                 duration: getEffectiveMinutes(),
-                clickTotal: _clickTotal,
-                searchCount: _searchCount,
-                crossCount: _crossCount,
-                catReal: _categoryCounts['实词'],
-                catFunction: _categoryCounts['虚词'],
-                catFixed: _categoryCounts['固定格式'],
-                catSentence: _categoryCounts['句式'],
-                catCulture: _categoryCounts['文化'],
-                relSemantic: _relationCounts['语义层'],
-                relTongjia: _relationCounts['通假字'],
-                relGujin: _relationCounts['古今字'],
-                relPolyphonic: _relationCounts['多音多义'],
-                relHomograph: _relationCounts['异词同形'],
-                relWordClass: _relationCounts['词类活用'],
-                relSentence: _relationCounts['句式'],
-                statusStable: _statusCounts['稳定'],
-                statusDecline: _statusCounts['频率下降'],
-                statusRestricted: _statusCounts['受限'],
-                nodeSummary: buildNodeSummary(),
-                categorySummary: buildCategorySummary(),
-                pathSummary: buildPathSummary(),
-                lessons: buildLessonSummary()
+                totalUnique: _allUnique.size,
+                categoryDistribution: formatUniqueDistribution(CATEGORY_ORDER, _categoryUnique),
+                statusDistribution: formatUniqueDistribution(STATUS_ORDER, _statusUnique),
+                relationDistribution: formatUniqueDistribution(RELATION_ORDER, _relationUnique),
+                crossUnique: _crossUnique.size,
+                crossLectureUnique: _crossLectureUnique.size,
+                lessonDistribution: buildLessonDistribution(),
+                overallTop10: buildOverallTop10(),
+                statusTop10: buildStatusTop10(),
+                crossTop10: buildCrossTop10(),
+                crossLectureTop10: buildCrossLectureTop10(),
+                searchUnique: _searchUnique.size,
+                searchClickCount: _searchClickCount
             };
         }
 
@@ -3488,7 +3611,72 @@
             Object.keys(ENTRY).forEach(function(key) {
                 params.append(ENTRY[key], record[key] === undefined || record[key] === null ? '' : String(record[key]));
             });
+            Object.keys(FORM_EXTRA_FIELDS).forEach(function(key) {
+                params.append(key, FORM_EXTRA_FIELDS[key]);
+            });
             return params;
+        }
+
+        // 使用浏览器原生HTML表单提交到隐藏iframe，一次只形成一条正式答卷。
+        function submitViaHiddenForm(record) {
+            return new Promise(function(resolve, reject) {
+                const iframe = document.createElement('iframe');
+                const frameName = 'google_form_target_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                iframe.name = frameName;
+                iframe.style.display = 'none';
+                iframe.setAttribute('aria-hidden', 'true');
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = FORM_BASE;
+                form.target = frameName;
+                form.acceptCharset = 'UTF-8';
+                form.style.display = 'none';
+
+                buildParams(record).forEach(function(value, key) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = value;
+                    form.appendChild(input);
+                });
+
+                let finished = false;
+                let timer = null;
+                function cleanup() {
+                    if (timer) clearTimeout(timer);
+                    setTimeout(function() {
+                        if (form.parentNode) form.parentNode.removeChild(form);
+                        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+                    }, 500);
+                }
+                function finish(ok, error) {
+                    if (finished) return;
+                    finished = true;
+                    cleanup();
+                    if (ok) resolve();
+                    else reject(error || new Error('Google 表单提交失败'));
+                }
+
+                iframe.addEventListener('load', function() {
+                    if (form.dataset.submitted === '1') finish(true);
+                });
+                iframe.addEventListener('error', function() {
+                    finish(false, new Error('Google 表单响应加载失败'));
+                });
+
+                document.body.appendChild(iframe);
+                document.body.appendChild(form);
+                form.dataset.submitted = '1';
+
+                try {
+                    form.submit();
+                    // 少数浏览器会阻止跨域iframe读取完成状态，请求发出后以超时作为完成兜底。
+                    timer = setTimeout(function() { finish(true); }, 6000);
+                } catch (error) {
+                    finish(false, error);
+                }
+            });
         }
 
         function escapeHtml(value) {
@@ -3514,49 +3702,39 @@
                 + '</div>';
         }
 
-        // 本地测试报告与 Google 表单字段保持同一顺序，便于逐项核对。
+        // 本地测试报告严格按照新Google表单17项顺序展示，但不会发出任何提交请求。
         function buildTestDisplay(record) {
             return ''
-                + '<div class="test-report-note">🧪 当前为本地测试模式：以下内容仅供核对，不会写入 Google 表单。</div>'
-                + '<div class="test-report-section"><h3>一、学生信息与总体使用情况</h3><div class="test-report-grid">'
-                + reportField('班级', record.classname)
-                + reportField('姓名', record.name)
-                + reportField('学号', record.id)
-                + reportField('有效学习时间（分钟）', record.duration)
-                + reportField('浏览知识节点数量', record.clickTotal)
-                + reportField('搜索功能使用次数', record.searchCount)
-                + reportField('跨课关联次数', record.crossCount)
+                + '<div class="test-report-note">🧪 当前为本地测试模式：以下17项仅供逐项核对，绝不会写入 Google 表单。</div>'
+                + '<div class="test-report-section"><h3>一、学生信息与总体情况（1—5）</h3><div class="test-report-grid">'
+                + reportField('1. 班级', record.classname)
+                + reportField('2. 姓名', record.name)
+                + reportField('3. 学号', record.id)
+                + reportField('4. 有效学习时间（分钟）', record.duration)
+                + reportField('5. 本次学习的独立知识点总数', record.totalUnique)
                 + '</div></div>'
-                + '<div class="test-report-section"><h3>二、知识板块学习情况</h3><div class="test-report-grid">'
-                + reportField('实词点击次数', record.catReal)
-                + reportField('虚词点击次数', record.catFunction)
-                + reportField('固定格式点击次数', record.catFixed)
-                + reportField('句式点击次数', record.catSentence)
-                + reportField('文化知识点击次数', record.catCulture)
-                + '</div></div>'
-                + '<div class="test-report-section"><h3>三、知识关联学习情况</h3><div class="test-report-grid">'
-                + reportField('语义层点击次数', record.relSemantic)
-                + reportField('通假字点击次数', record.relTongjia)
-                + reportField('古今字点击次数', record.relGujin)
-                + reportField('多音多义点击次数', record.relPolyphonic)
-                + reportField('异词同形点击次数', record.relHomograph)
-                + reportField('词类活用点击次数', record.relWordClass)
-                + reportField('句式点击次数（关联类型）', record.relSentence)
-                + '</div></div>'
-                + '<div class="test-report-section"><h3>四、文中功能现状</h3><div class="test-report-grid">'
-                + reportField('稳定点击次数', record.statusStable)
-                + reportField('频率下降点击次数', record.statusDecline)
-                + reportField('受限点击次数', record.statusRestricted)
-                + '</div></div>'
-                + '<div class="test-report-section"><h3>五、摘要信息</h3>'
-                + reportLongField('知识点访问摘要', record.nodeSummary)
-                + reportLongField('知识类别分布摘要', record.categorySummary)
-                + reportLongField('学习路径摘要', record.pathSummary)
-                + reportLongField('主要学习篇目', record.lessons)
-                + '</div>';
+                + '<div class="test-report-section"><h3>二、独立知识点分布（6—11）</h3>'
+                + reportLongField('6. 分类学习分布（独立知识点数）', record.categoryDistribution)
+                + reportLongField('7. 文中功能现状学习分布（独立知识点数）', record.statusDistribution)
+                + reportLongField('8. 关联类型学习分布（独立知识点数）', record.relationDistribution)
+                + '<div class="test-report-grid">'
+                + reportField('9. 跨课关联学习的独立知识点数', record.crossUnique)
+                + reportField('10. 跨课关联讲解涉及的独立知识点数', record.crossLectureUnique)
+                + '</div>'
+                + reportLongField('11. 篇目学习分布（独立知识点数）', record.lessonDistribution)
+                + '</div>'
+                + '<div class="test-report-section"><h3>三、点击次数TOP10（12—15）</h3>'
+                + reportLongField('12. 全部知识点点击次数TOP10', record.overallTop10)
+                + reportLongField('13. 文中功能现状下点击次数TOP10', record.statusTop10)
+                + reportLongField('14. 跨课关联下点击次数TOP10', record.crossTop10)
+                + reportLongField('15. 跨课关联讲解点击次数TOP10', record.crossLectureTop10)
+                + '</div>'
+                + '<div class="test-report-section"><h3>四、搜索行为（16—17）</h3><div class="test-report-grid">'
+                + reportField('16. 搜索打开的独立知识点数', record.searchUnique)
+                + reportField('17. 搜索功能使用次数（点击次数）', record.searchClickCount)
+                + '</div></div>';
         }
 
-        // 只使用一次 fetch 提交，避免旧版本一次产生三条重复记录。
         async function submitData() {
             if (!_sessionStart || !_userName) return { ok: false, reason: 'not-logged-in' };
             const record = buildRecord();
@@ -3571,13 +3749,7 @@
             if (_submitted) return { ok: true, duplicate: true, record: record };
             _submitted = true;
             try {
-                await fetch(FORM_BASE, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    keepalive: true,
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                    body: buildParams(record).toString()
-                });
+                await submitViaHiddenForm(record);
                 return { ok: true, test: false, record: record };
             } catch (error) {
                 _submitted = false;
@@ -3590,13 +3762,10 @@
             return ''
                 + '<div class="student-end-message">'
                 + '<div class="student-duration-card">本次有效学习时间<strong>' + escapeHtml(record.duration) + ' 分钟</strong></div>'
-                + '<div>感谢你的认真学习！</div>'
-                + '<div>坚持探索，你会发现更多古代汉语知识之间的联系。</div>'
-                + '<div class="student-confirm-text">是否确认提交本次学习记录并退出？</div>'
                 + '</div>';
         }
 
-        // 点击网页内“结束学习”时：正式学生仅看到有效时长和鼓励语；本地测试显示完整表单预览。
+        // 正式学生端只显示有效学习时长；本地测试端显示17项完整预览。
         function showEndOverlay() {
             if (!_sessionStart || !_userName) return;
             const record = buildRecord();
@@ -3607,16 +3776,17 @@
             const submitButton = document.getElementById('endSubmitBtn');
             const cancelButton = document.getElementById('endCancelBtn');
 
+            cancelButton.style.display = 'block';
             if (IS_OFFICIAL_GITHUB) {
                 box.classList.remove('test-report');
-                icon.textContent = '🌱';
-                title.textContent = '学习完成';
+                icon.textContent = '📊';
+                title.textContent = '结束学习';
                 info.innerHTML = buildStudentEndDisplay(record);
                 submitButton.textContent = '确认提交并退出';
                 cancelButton.textContent = '继续学习';
             } else {
                 box.classList.add('test-report');
-                icon.textContent = '📊';
+                icon.textContent = '🧪';
                 title.textContent = '本次测试数据预览';
                 info.innerHTML = buildTestDisplay(record);
                 submitButton.textContent = '结束本次测试（不提交）';
@@ -3635,14 +3805,13 @@
 
         function leaveLearningPage() {
             _allowUnload = true;
-            // 由脚本打开的标签页通常可以直接关闭；普通标签页若被浏览器拦截，则退到空白页。
             try { window.close(); } catch (error) {}
             setTimeout(function() {
                 if (!window.closed) window.location.replace('about:blank');
             }, 350);
         }
 
-        // 点击确认：正式网页提交一次后退出；本地测试只生成预览和控制台记录。
+        // 正式网页提交一次后退出；本地测试只更新预览和控制台，不提交。
         async function doEndSubmit() {
             const button = document.getElementById('endSubmitBtn');
             const done = document.getElementById('endDone');
@@ -3658,7 +3827,7 @@
 
             if (result.test) {
                 document.getElementById('endInfo').innerHTML = buildTestDisplay(result.record);
-                done.textContent = '🧪 测试数据已生成并输出到浏览器控制台，未写入 Google 表单。';
+                done.textContent = '🧪 测试数据已生成，未写入 Google 表单。';
                 done.style.display = 'block';
                 button.style.display = 'none';
                 return;
@@ -3673,33 +3842,49 @@
             setTimeout(leaveLearningPage, 800);
         }
 
-        // 浏览器自身不允许网页在点击标签页/窗口“×”时展示自定义HTML弹窗。
-        // 因此正式网页使用浏览器原生离开确认框防误触；学生选择“取消”即可继续学习。
+        // 浏览器原生离开确认：只有正式GitHub网页启用；测试环境不会触发表单提交。
         window.addEventListener('beforeunload', function(e) {
             if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            showEndOverlay();
             e.preventDefault();
             e.returnValue = '';
         });
 
-        // 学生在浏览器原生确认框中仍选择离开时，尽量补交一次本次记录。
+        // 学生直接关闭正式网页时，使用 sendBeacon / keepalive 尝试提交一条正式记录。
         window.addEventListener('pagehide', function() {
             if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             const record = buildRecord();
-            const body = buildParams(record);
-            _submitted = true;
+            const payload = buildParams(record).toString();
+            let queued = false;
             try {
                 if (navigator.sendBeacon) {
-                    navigator.sendBeacon(FORM_BASE, body);
-                } else {
+                    const blob = new Blob([payload], {
+                        type: 'application/x-www-form-urlencoded;charset=UTF-8'
+                    });
+                    queued = navigator.sendBeacon(FORM_BASE, blob);
+                }
+                if (!queued) {
                     fetch(FORM_BASE, {
                         method: 'POST',
                         mode: 'no-cors',
                         keepalive: true,
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-                        body: body.toString()
+                        body: payload
                     }).catch(function() {});
                 }
-            } catch (error) {}
+                _submitted = true;
+            } catch (error) {
+                try {
+                    fetch(FORM_BASE, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        keepalive: true,
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                        body: payload
+                    }).catch(function() {});
+                    _submitted = true;
+                } catch (ignore) {}
+            }
         });
 
         console.log('📖 古代汉语知识图谱（全七课完整版）已加载');
