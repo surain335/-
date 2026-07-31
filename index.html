@@ -1251,6 +1251,7 @@
         <span class="legend-label">图例：</span>
         <span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span>实词</span>
         <span class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span>虚词</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#06b6d4;"></span>叹词</span>
         <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6;"></span>固定格式</span>
         <span class="legend-item"><span class="legend-dot" style="background:#10b981;"></span>句式</span>
         <span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span>文化</span>
@@ -1264,6 +1265,7 @@
             <div class="cat-menu" id="catMenu">
                 <button class="cat-menu-item" data-hl="cat-实词" onclick="toggleCatHlDirect(this)">实词</button>
                 <button class="cat-menu-item" data-hl="cat-虚词" onclick="toggleCatHlDirect(this)">虚词</button>
+                <button class="cat-menu-item" data-hl="cat-叹词" onclick="toggleCatHlDirect(this)">叹词</button>
                 <button class="cat-menu-item" data-hl="cat-固定格式" onclick="toggleCatHlDirect(this)">固定格式</button>
                 <button class="cat-menu-item" data-hl="cat-句式" onclick="toggleCatHlDirect(this)">句式</button>
                 <button class="cat-menu-item" data-hl="cat-文化" onclick="toggleCatHlDirect(this)">文化</button>
@@ -1289,6 +1291,7 @@
                     </div>
                 </div>
                 <div class="cat-menu-group">
+                    <button class="cat-menu-item" data-hl="rel-叹词" onclick="toggleRelHl(this)">叹词</button>
                     <button class="cat-menu-item" data-hl="rel-通假字" onclick="toggleRelHl(this)">通假字</button>
                     <button class="cat-menu-item" data-hl="rel-古今字" onclick="toggleRelHl(this)">古今字</button>
                     <button class="cat-menu-item" data-hl="rel-多音多义" onclick="toggleRelHl(this)">多音多义</button>
@@ -1642,7 +1645,7 @@
             ["为学", "于", "虚词", "yú", "介词，引出动作对象，译为“在、被、向、对于、对”", "介词功能古今一致，书面语中仍常用", "对于、关于、于公于私", "贫者语于富者曰", "", "\"于\"作介词表\"对/向\"，书面语中常见（如\"对于\"\"关于\"\"属于\"），口语不单独使用\"于\"。", "", false, "频率下降", ""],
             ["为学", "顾", "虚词", "gù", "副词，反而、难道（表反问）", "顾-01 反问副词义已消失，现代以动词\"看/回头看/照顾\"为主", "", "顾不如蜀鄙之僧哉", "", "课文中 “顾” 是副词 “反而 / 难道”。该义现代基本不用。现代 “顾” 常用义是动词 “看 / 照顾 / 考虑”（如 “顾客”“照顾”）", "", false, "受限", ""],
             ["为学", "亦", "虚词", "yì", "副词，翻译为“也”", "也", "人云亦云、反之亦然", "为之，则难者亦易矣；不为，则易者亦难矣", "", "文言通用副词，古今词义不变；现代汉语口语多用“也”，“亦”仅留存书面、成语", "", false, "频率下降", ""],
-            ["为学", "子", "实词", "zǐ", "您，对对方的尊称", "你", "子非鱼安知鱼之乐", "富者曰：“子何恃而往？”", "", "古代对对方礼貌称呼；现代口语不再单用“子”称人，仅古文、文言对话使用", "", false, "受限", ""],
+            ["为学", "子", "虚词", "zǐ", "您，对对方的尊称", "你", "子非鱼安知鱼之乐", "富者曰：“子何恃而往？”", "", "古代对对方礼貌称呼；现代口语不再单用“子”称人，仅古文、文言对话使用", "", false, "受限", ""],
             ["为学", "……者", "固定格式", "zhě", "\"者\" 附在名词 / 动词后，指代 \"…… 的人 / 事物\"", "助词，指代人或事物；也表停顿", "作者、读者、前者、后者、记者", "为之，则难者亦易矣；不为，则易者亦难矣", "固定格式", "古代 “者” 是非常高频的指代助词，现在这个功能只留在合成词里，日常造句都用 “…… 的人 / 东西” 代替，不再单独自由使用 “者”。", "", false, "频率下降", "固定格式"],
             ["为学", "亦……矣", "固定格式", "/", "文言固定格式，用于加强语气，译为“也……了”", "也……了", "事已成矣，心亦安矣", "为之，则难者亦易矣；不为，则易者亦难矣", "固定格式", "文言常用语气搭配，现代汉语拆分使用，不再连用该固定格式", "", false, "受限", "固定格式"],
             ["为学", "“何”宾语前置", "句式", "", "宾语前置，疑问代词 “何” 作宾语时前置，正常语序为 “子恃何而往”", "现代汉语疑问代词宾语不前置，语序为 “你凭什么前往？”", "（古）子何恃而往 ←（今）你凭什么前往", "子何恃而往", "倒装句", "古汉语中，疑问代词作宾语时需前置；现代汉语中宾语位置固定在动词 / 介词之后。", "", false, "受限", "倒装句"],
@@ -1694,7 +1697,7 @@
             ["爱莲说", "之", "虚词", "zhī", "结构助词，连接定语与中心语，表修饰 / 领属，译为 “的”", "现代汉语用助词 “的”", "花园之景、朋友之信", "水陆草木之花// 花之隐逸者也 / 花之富贵者也 / 花之君子者也", "", "“之” 作助词相当于 “的”，口语中用 “的”，书面语中保留。", "", false, "频率下降", ""],
             ["爱莲说", "之", "虚词", "zhī", "主谓之间助词，无实义，取消句子独立性.", "现代汉语中该用法主要在仿古书面语中偶见残余，例词：生命之脆弱令人叹息、时光之流逝不可阻挡。", "", "予独爱莲之出淤泥而不染", "", "古代\"之\"插入主谓间使结构名词化，现代汉语相应功能由\"的\"字结构替代，之的使用频率下降。", "", false, "频率下降", ""],
             ["爱莲说", "之", "虚词", "zhī", "结构助词，宾语前置标志，无实义；正常语序：爱牡丹", "现代汉语无前置标志，语序为 “喜爱牡丹”", "古：菊之爱 ← 今：喜爱菊花", "牡丹之爱，宜乎众矣", "倒装句", "古汉语用 “之” 将宾语提前，形成倒装结构；现代汉语使用正常动宾语序，无此类语法", "", false, "受限", "倒装句"],
-            ["爱莲说", "噫", "虚词", "yī", "唉，表感慨叹息", "", "", "噫！菊之爱，陶后鲜有闻", "", "文言典型句首叹词，现代汉语仅留存于仿古、文言引用中，日常口语多用 “唉、哎呀” 替代。", "", false, "受限", ""],
+            ["爱莲说", "噫", "叹词", "yī", "唉，表感慨叹息", "", "", "噫！菊之爱，陶后鲜有闻", "叹词", "文言典型句首叹词，现代汉语仅留存于仿古、文言引用中，日常口语多用 “唉、哎呀” 替代。", "", false, "受限", "叹词"],
             ["爱莲说", "何", "虚词", "hé", "为什么、怎么，表疑问", "什么、哪", "何人、何物、何故", "同予者何人", "", "文言高频疑问代词；口语多用“什么/哪”，书面文言保留“何”", "", false, "频率下降", ""],
             ["爱莲说", "自…… 来", "固定格式", "zì……lái", "从…… 以来，表时间起点的固定结构", "固定时间结构，引出时间开端", "自古以来。自…… 来", "自李唐来，世人甚爱牡丹", "固定格式", "现代汉语书面、口语依旧使用。", "", false, "稳定", "固定格式"],
             ["爱莲说", "……者", "固定格式", "zhě", "\"者\" 附在名词 / 动词后，指代 \"…… 的人 / 事物\"", "现代汉语多用 “…… 的”，极少单用 “者”", "读者、作者", "可爱者甚蕃 / 花之隐逸者也 / 花之富贵者也 / 花之君子者也 / 同予者何人", "固定格式", "“者” 指代 “…… 的人 / 事物”，现代多用 “…… 的”，极少单用 “者”。", "", false, "频率下降", "固定格式"],
@@ -1744,7 +1747,7 @@
             ["马说", "是", "虚词", "shì", "代词，这", "是-01 判断动词，与\"否\"相对", "是非对错、他是老师", "是马也", "", "古义为指示代词，今义为判断动词。", "", false, "受限", ""],
             ["马说", "且", "虚词", "qiě", "尚且、还", "递进副词，表让步递进", "而且、况且、尚且", "且欲与常马等不可得", "", "", "", false, "稳定", ""],
             ["马说", "安", "虚词", "ān", "疑问副词，怎么", "现代核心义为安全、平安（形容词），疑问副词用法仅存文言书面", "", "安求其能千里也", "", "古义表反问，今义表状态“安全", "", false, "受限", ""],
-            ["马说", "呜呼", "虚词", "wū hū", "唉，表惊叹感慨", "句首感叹词，抒发强烈情绪", "呜呼哀哉", "呜呼！其真无马邪？", "", "古代稳定感叹词，现代汉语仅留存于书面、仿古表达中，日常口语多用 “唉、哎呀” 替代。", "", false, "受限", ""],
+            ["马说", "呜呼", "叹词", "wū hū", "唉，表惊叹感慨", "句首感叹词，抒发强烈情绪", "呜呼哀哉", "呜呼！其真无马邪？", "叹词", "古代稳定感叹词，现代汉语仅留存于书面、仿古表达中，日常口语多用 “唉、哎呀” 替代。", "", false, "受限", "叹词"],
             ["马说", "其", "虚词", "qí", "第三人称物主代词，他的、它的、他们的", "其-01 代词，它、他/她/它的", "其貌不扬、其势汹汹", "安求其能千里也", "", "“其” 代指的意义，书面留存，较为稳定，但是现代基本不单独使用。", "", false, "频率下降", ""],
             ["马说", "其", "虚词", "qí", "语气词，表示反问语气，岂、难道", "其-02 语气词，表反问（书面语）", "其奈我何？", "其真无马邪", "", "“其” 表难道，基本仅文言使用。", "", false, "受限", ""],
             ["马说", "其", "虚词", "qí", "语气词，表示推测语气，恐怕", "很少使用", "", "其真不知马也", "", "“其” 表恐怕，现代很少使用。", "", false, "受限", ""],
@@ -1864,7 +1867,7 @@
         const allLessonNames = ['精卫填海', '夸父逐日', '自相矛盾', '画蛇添足', '执长竿入城', '火烧裳尾', '远水不救近火', '拔杨容易栽杨难', '为学', '爱莲说',
             '马说'
         ];
-        const allCategories = ['实词', '虚词', '固定格式', '句式', '文化'];
+        const allCategories = ['实词', '虚词', '叹词', '固定格式', '句式', '文化'];
 
         // 课文中心
         const textCenterNodes = allLessonNames.map(ls => ({
@@ -1974,15 +1977,17 @@
             '板块': 1,
             '实词': 2,
             '虚词': 3,
-            '固定格式': 4,
-            '句式': 5,
-            '文化': 6
+            '叹词': 4,
+            '固定格式': 5,
+            '句式': 6,
+            '文化': 7
         };
         const categories = [
             { name: '课文中心', itemStyle: { color: '#1e293b' } },
             { name: '板块', itemStyle: { color: '#64748b' } },
             { name: '实词', itemStyle: { color: '#3b82f6' } },
             { name: '虚词', itemStyle: { color: '#f59e0b' } },
+            { name: '叹词', itemStyle: { color: '#06b6d4' } },
             { name: '固定格式', itemStyle: { color: '#8b5cf6' } },
             { name: '句式', itemStyle: { color: '#10b981' } },
             { name: '文化', itemStyle: { color: '#ef4444' } }
@@ -1995,6 +2000,7 @@
             let color = '#94a3b8';
             if (n.category === '实词') color = '#3b82f6';
             else if (n.category === '虚词') color = '#f59e0b';
+            else if (n.category === '叹词') color = '#06b6d4';
             else if (n.category === '固定格式') color = '#8b5cf6';
             else if (n.category === '句式') color = '#10b981';
             else if (n.category === '文化') color = '#ef4444';
@@ -2506,7 +2512,7 @@
             document.getElementById('detailPanel').classList.remove('open');
         });
 
-        const CAT_COLORS = { '实词': '#3b82f6', '虚词': '#f59e0b', '固定格式': '#8b5cf6', '句式': '#10b981', '文化': '#ef4444' };
+        const CAT_COLORS = { '实词': '#3b82f6', '虚词': '#f59e0b', '叹词': '#06b6d4', '固定格式': '#8b5cf6', '句式': '#10b981', '文化': '#ef4444' };
 
         // 显示详情面板
         function showDetailPanel(node) {
@@ -2960,7 +2966,7 @@
                 return;
             }
             // 按分类分组
-            const groups = { '实词': [], '虚词': [], '固定格式': [], '句式': [], '文化': [] };
+            const groups = { '实词': [], '虚词': [], '叹词': [], '固定格式': [], '句式': [], '文化': [] };
             results.forEach(n => {
                 const cat = n.raw.category || '实词';
                 if (groups[cat]) groups[cat].push(n);
@@ -3031,14 +3037,14 @@
             lessonOrderArr.forEach(text => {
                 const nodesInText = rawNodes.filter(n => n.text === text && !n.isTextCenter && !n.isBlock);
                 if (nodesInText.length === 0) return;
-                const mods = { '实词': [], '虚词': [], '固定格式': [], '句式': [], '文化': [] };
+                const mods = { '实词': [], '虚词': [], '叹词': [], '固定格式': [], '句式': [], '文化': [] };
                 nodesInText.forEach(n => { if (mods[n.category]) mods[n.category].push(n); });
                 html += `<div class="dir-item">
                     <div class="dir-label" data-target="dir_${text}">
                         ${text} <span class="arrow">▶</span>
                     </div>
                     <div class="dir-children" id="dir_${text}">`;
-                ['实词', '虚词', '固定格式', '句式', '文化'].forEach(cat => {
+                ['实词', '虚词', '叹词', '固定格式', '句式', '文化'].forEach(cat => {
                     if (mods[cat].length === 0) return;
                     const modId = `mod_${text}_${cat}`;
                     html += `
@@ -3143,9 +3149,9 @@
         let _lastTickAt = 0;
         let _lastActivityAt = 0;
 
-        const CATEGORY_ORDER = ['实词', '虚词', '固定格式', '句式', '文化'];
+        const CATEGORY_ORDER = ['实词', '虚词', '叹词', '固定格式', '句式', '文化'];
         const STATUS_ORDER = ['稳定', '频率下降', '受限'];
-        const RELATION_ORDER = ['语义层', '通假字', '古今字', '多音多义', '异词同形', '词类活用', '句式'];
+        const RELATION_ORDER = ['语义层', '叹词', '通假字', '古今字', '多音多义', '异词同形', '词类活用', '句式'];
 
         // 独立知识点集合：同一“标准词目＋基础分类”无论点击多少次、从多少角度学习，只算一次。
         const _allUnique = new Set();
@@ -3326,7 +3332,7 @@
             });
             if (semanticSelected) matched.push('语义层');
 
-            ['通假字', '古今字', '多音多义', '异词同形'].forEach(function(name) {
+            ['叹词', '通假字', '古今字', '多音多义', '异词同形'].forEach(function(name) {
                 if (active.includes('rel-' + name) && relationMatches(allRelations, name)) matched.push(name);
             });
 
@@ -3416,7 +3422,7 @@
         }
 
         // 点击真实知识节点：
-        // 1. 总数和五大分类按“独立知识点”去重；
+        // 1. 总数和六大分类按“独立知识点”去重；
         // 2. 现状、关联类型、跨课关联仅在对应筛选状态下计入；
         // 3. 点击事件仍完整保留，用于各类TOP10。
         function trackNodeClick(node, source) {
