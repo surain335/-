@@ -3126,8 +3126,8 @@
             statusTop10:             'entry.1024582454',
             crossTop10:              'entry.2120574130',
             crossLectureTop10:       'entry.2133013974',
-            searchUnique:            'entry.1116517432',
-            searchClickCount:        'entry.936590592'
+            searchUniqueCount:       'entry.1116517432',
+            searchTop10:             'entry.936590592'
         };
 
         // 只有部署到 GitHub Pages 的正式网页才提交 Google 表单。
@@ -3163,9 +3163,9 @@
         const _searchUnique = new Set();
         const _lessonUnique = Object.fromEntries(allLessonNames.map(function(name) { return [name, new Set()]; }));
 
-        // 点击次数：用于全部、现状、跨课关联和跨课讲解的TOP10；搜索点击单独计总次数。
+        // 点击事件用于全部、现状、跨课关联、跨课讲解以及搜索TOP10。
+        // “搜索功能使用次数”按通过搜索打开的独立知识点数量统计，由 _searchUnique 去重。
         const _clickEvents = [];
-        let _searchClickCount = 0;
 
         function updateActiveTime(now) {
             if (!_sessionStart) return;
@@ -3513,12 +3513,13 @@
             });
         }
 
-        // 搜索点击次数按“点击一条搜索结果并成功打开知识点”计算。
-        // 搜索打开的独立知识点由 trackNodeClick(source='搜索') 自动去重记录。
+        // 搜索按钮/搜索结果交互只用于维持有效学习计时。
+        // “搜索功能使用次数”不在这里累加，而是使用 _searchUnique.size：
+        // 同一知识点通过搜索打开多次仍只算1个独立知识点。
+        // 实际重复点击次数则继续由搜索TOP10统计。
         function trackSearch() {
             if (!_sessionStart) return;
             markActivity();
-            _searchClickCount++;
         }
 
         // 切换篇目筛选本身不算学习知识点，只作为交互活动维持有效学习计时。
@@ -3568,8 +3569,21 @@
         }
 
         function buildStatusTop10() {
-            const events = _clickEvents.filter(function(event) { return event.statuses.length > 0; });
-            return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
+            // 现状TOP10按“知识点（文中功能现状）”展示，而不是按基础词类展示。
+            // 例如：杨（稳定）×3；之（频率下降）×2。
+            // 如果一次学习行为同时命中多个已勾选现状，则分别计入对应现状。
+            const expanded = [];
+            _clickEvents.forEach(function(event) {
+                (event.statuses || []).forEach(function(status) {
+                    expanded.push({
+                        label: event.label,
+                        status: status
+                    });
+                });
+            });
+            return formatTop(sortedTop(countMap(expanded, function(item) {
+                return item.label + '（' + item.status + '）';
+            }), 10));
         }
 
         function buildCrossTop10() {
@@ -3579,6 +3593,14 @@
 
         function buildCrossLectureTop10() {
             const events = _clickEvents.filter(function(event) { return event.isCrossLecture; });
+            return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
+        }
+
+        function buildSearchTop10() {
+            // 搜索TOP10统计“通过搜索结果真正打开知识点”的实际点击次数（不去重），
+            // 与第16项的独立知识点数量分开统计。
+            // 展示基础分类，格式如：道（实词）×5；之（虚词）×3。
+            const events = _clickEvents.filter(function(event) { return event.source === '搜索'; });
             return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
         }
 
@@ -3609,8 +3631,8 @@
                 statusTop10: buildStatusTop10(),
                 crossTop10: buildCrossTop10(),
                 crossLectureTop10: buildCrossLectureTop10(),
-                searchUnique: _searchUnique.size,
-                searchClickCount: _searchClickCount
+                searchUniqueCount: _searchUnique.size,
+                searchTop10: buildSearchTop10()
             };
         }
 
@@ -3768,10 +3790,12 @@
                 + reportLongField('14. 跨课关联下点击次数TOP10', record.crossTop10)
                 + reportLongField('15. 跨课关联讲解点击次数TOP10', record.crossLectureTop10)
                 + '</div>'
-                + '<div class="test-report-section"><h3>四、搜索行为（16—17）</h3><div class="test-report-grid">'
-                + reportField('16. 搜索打开的独立知识点数', record.searchUnique)
-                + reportField('17. 搜索功能使用次数（点击次数）', record.searchClickCount)
-                + '</div></div>';
+                + '<div class="test-report-section"><h3>四、搜索行为（16—17）</h3>'
+                + '<div class="test-report-grid">'
+                + reportField('16. 搜索功能使用次数', record.searchUniqueCount)
+                + '</div>'
+                + reportLongField('17. 搜索打开知识点TOP10', record.searchTop10)
+                + '</div>';
         }
 
         async function submitData() {
