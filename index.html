@@ -1226,13 +1226,13 @@
                 <button type="button" id="studentModeBtn" class="login-mode-btn active" onclick="setLoginMode('student')">学生登录</button>
                 <button type="button" id="teacherModeBtn" class="login-mode-btn" onclick="setLoginMode('teacher')">教师入口</button>
             </div>
+            <select id="inputClass" aria-label="请选择班级">
+                <option value="">请选择班级（必填）</option>
+                <option value="25级汉教1班">25级汉教1班</option>
+                <option value="25级汉教2班">25级汉教2班</option>
+                <option value="25级汉教3班">25级汉教3班</option>
+            </select>
             <div id="studentLoginFields">
-                <select id="inputClass" aria-label="请选择班级">
-                    <option value="">请选择班级（必填）</option>
-                    <option value="25级汉教1班">25级汉教1班</option>
-                    <option value="25级汉教2班">25级汉教2班</option>
-                    <option value="25级汉教3班">25级汉教3班</option>
-                </select>
                 <input type="text" id="inputId" placeholder="请输入15位学号（必填）" autocomplete="off" inputmode="numeric" maxlength="15" />
             </div>
             <div id="teacherLoginFields">
@@ -3376,15 +3376,20 @@
 
         function doLogin() {
             if (_loginMode === 'teacher') {
+                const cls = document.getElementById('inputClass').value.trim();
                 const password = document.getElementById('inputTeacherPassword').value;
+                if (!cls) {
+                    document.getElementById('loginErr').textContent = '请选择教师本次使用的班级';
+                    return;
+                }
                 if (password !== '2026') {
                     document.getElementById('loginErr').textContent = '教师密码错误';
                     return;
                 }
                 _isTeacher = true;
                 _userName = '教师';
-                _userId = '';
-                _userClass = '教师端';
+                _userId = '教师端';
+                _userClass = cls;
             } else {
                 const sid = document.getElementById('inputId').value.trim();
                 const cls = document.getElementById('inputClass').value.trim();
@@ -3420,7 +3425,7 @@
             document.getElementById('loginOverlay').style.display = 'none';
             const tag = document.getElementById('userTag');
             tag.textContent = _isTeacher
-                ? '👩‍🏫 教师端'
+                ? '👩‍🏫 教师｜' + _userClass + (IS_OFFICIAL_GITHUB ? '' : '｜🧪测试')
                 : '👤 ' + _userName + '｜' + _userClass + (IS_OFFICIAL_GITHUB ? '' : '｜🧪测试');
             tag.style.display = 'inline-block';
             document.getElementById('endBtn').style.display = 'inline-block';
@@ -4007,9 +4012,14 @@
 
         // 本地测试与教师端报告严格按照新Google表单19项顺序展示。
         function buildTestDisplay(record) {
+            const reportNote = _isTeacher
+                ? (IS_OFFICIAL_GITHUB
+                    ? '👩‍🏫 教师端：以下19项将在确认后写入 Google 表单。'
+                    : '👩‍🏫 教师端本地测试：以下19项仅供核对，不会写入 Google 表单。')
+                : '🧪 当前为本地测试模式：以下19项仅供逐项核对，绝不会写入 Google 表单。';
             return ''
-                + '<div class="test-report-note">' + (_isTeacher ? '👩‍🏫 教师端：以下19项仅供查看，不会写入 Google 表单。' : '🧪 当前为本地测试模式：以下19项仅供逐项核对，绝不会写入 Google 表单。') + '</div>'
-                + '<div class="test-report-section"><h3>一、学生信息与总体情况（1—5）</h3><div class="test-report-grid">'
+                + '<div class="test-report-note">' + reportNote + '</div>'
+                + '<div class="test-report-section"><h3>一、用户信息与总体情况（1—5）</h3><div class="test-report-grid">'
                 + reportField('1. 班级', record.classname)
                 + reportField('2. 姓名', record.name)
                 + reportField('3. 学号', record.id)
@@ -4046,7 +4056,7 @@
             if (!_sessionStart || !_userName) return { ok: false, reason: 'not-logged-in' };
             const record = buildRecord();
 
-            if (!IS_OFFICIAL_GITHUB || _isTeacher) {
+            if (!IS_OFFICIAL_GITHUB) {
                 console.group('🧪 知识图谱测试数据（未提交）');
                 console.table(record);
                 console.groupEnd();
@@ -4072,7 +4082,7 @@
                 + '</div>';
         }
 
-        // 正式学生端只显示有效学习时长；本地测试端和教师端显示19项完整预览。
+        // 正式学生端只显示有效学习时长；教师端显示19项完整记录并提交。
         function showEndOverlay() {
             if (!_sessionStart || !_userName) return;
             clearDwellFocus();
@@ -4085,7 +4095,14 @@
             const cancelButton = document.getElementById('endCancelBtn');
 
             cancelButton.style.display = 'block';
-            if (IS_OFFICIAL_GITHUB && !_isTeacher) {
+            if (_isTeacher) {
+                box.classList.add('test-report');
+                icon.textContent = '👩‍🏫';
+                title.textContent = '教师使用数据';
+                info.innerHTML = buildTestDisplay(record);
+                submitButton.textContent = IS_OFFICIAL_GITHUB ? '确认提交教师记录并退出' : '结束教师测试（不提交）';
+                cancelButton.textContent = '继续使用';
+            } else if (IS_OFFICIAL_GITHUB) {
                 box.classList.remove('test-report');
                 icon.textContent = '📊';
                 title.textContent = '结束学习';
@@ -4097,7 +4114,7 @@
                 icon.textContent = '🧪';
                 title.textContent = '本次测试数据预览';
                 info.innerHTML = buildTestDisplay(record);
-                submitButton.textContent = _isTeacher ? '结束教师预览' : '结束本次测试（不提交）';
+                submitButton.textContent = '结束本次测试（不提交）';
                 cancelButton.textContent = '返回继续测试';
             }
 
@@ -4124,12 +4141,12 @@
             const button = document.getElementById('endSubmitBtn');
             const done = document.getElementById('endDone');
             button.disabled = true;
-            button.textContent = IS_OFFICIAL_GITHUB && !_isTeacher ? '正在提交…' : '正在生成测试记录…';
+            button.textContent = IS_OFFICIAL_GITHUB ? '正在提交…' : '正在生成测试记录…';
 
             const result = await submitData();
             if (!result || !result.ok) {
                 button.disabled = false;
-                button.textContent = IS_OFFICIAL_GITHUB && !_isTeacher ? '提交失败，请重试' : '生成失败，请重试';
+                button.textContent = IS_OFFICIAL_GITHUB ? '提交失败，请重试' : '生成失败，请重试';
                 return;
             }
 
@@ -4153,7 +4170,7 @@
         // 浏览器标签页右侧“×”属于浏览器界面，网页无法直接拦截并显示自定义弹窗。
         // 可实现的方式是：先触发浏览器原生“是否离开”提示；若学生取消关闭，则立即显示本网页的结束学习弹窗。
         window.addEventListener('beforeunload', function(e) {
-            if (!IS_OFFICIAL_GITHUB || _isTeacher || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             updateActiveTime();
             _leaveAttempted = true;
             // 如果学生选择“取消离开”，该自定义弹窗会留在页面上。
@@ -4166,7 +4183,7 @@
 
         // 某些浏览器在取消关闭后才重新获得焦点，这里再次确保结束学习弹窗可见。
         function showEndOverlayAfterCancelledClose() {
-            if (!_leaveAttempted || !IS_OFFICIAL_GITHUB || _isTeacher || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            if (!_leaveAttempted || !IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             _leaveAttempted = false;
             setTimeout(function() {
                 if (document.visibilityState === 'visible') showEndOverlay();
@@ -4177,10 +4194,10 @@
             if (document.visibilityState === 'visible') showEndOverlayAfterCancelledClose();
         });
 
-        // 学生确认关闭标签页、关闭整个浏览器或跳转离开正式网页时，尽最大可能提交当前记录。
+        // 用户确认关闭标签页、关闭整个浏览器或跳转离开正式网页时，尽最大可能提交当前记录。
         // sendBeacon 专用于页面卸载时发送少量数据；失败时再使用 keepalive fetch 兜底。
         function submitRecordOnPageExit() {
-            if (!IS_OFFICIAL_GITHUB || _isTeacher || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             updateActiveTime();
             const record = buildRecord();
             const params = buildParams(record);
