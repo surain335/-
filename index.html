@@ -1345,6 +1345,8 @@
                         <button class="cat-sub-btn" data-hl="rel-让步句式" onclick="toggleRelHl(this)">让步句式</button>
                         <button class="cat-sub-btn" data-hl="rel-被动句" onclick="toggleRelHl(this)">被动句</button>
                         <button class="cat-sub-btn" data-hl="rel-倒装句" onclick="toggleRelHl(this)">倒装句</button>
+                        <button class="cat-sub-btn" data-hl="rel-疑问句" onclick="toggleRelHl(this)">疑问句</button>
+                        <button class="cat-sub-btn" data-hl="rel-反问句" onclick="toggleRelHl(this)">反问句</button>
                     </div>
                 </div>
             </div>
@@ -2078,7 +2080,7 @@
             const relationGroups = {
                 '语义层': ['语义扩大', '语义缩小', '语义转移'],
                 '词类活用': ['词类活用·名作动', '词类活用·形作动', '词类活用·使动', '词类活用·名作状'],
-                '句式': ['省略句', '判断句', '让步句式', '被动句', '倒装句']
+                '句式': ['省略句', '判断句', '让步句式', '被动句', '倒装句', '疑问句', '反问句']
             };
             const expanded = [];
             [...highlights].filter(h => h.startsWith('rel-')).forEach(function(h) {
@@ -2375,7 +2377,7 @@
         const REL_GROUPS = {
             'rel-语义层': ['rel-语义扩大', 'rel-语义缩小', 'rel-语义转移'],
             'rel-词类活用': ['rel-词类活用·名作动', 'rel-词类活用·形作动', 'rel-词类活用·使动', 'rel-词类活用·名作状'],
-            'rel-句式': ['rel-省略句', 'rel-判断句', 'rel-让步句式', 'rel-被动句', 'rel-倒装句'],
+            'rel-句式': ['rel-省略句', 'rel-判断句', 'rel-让步句式', 'rel-被动句', 'rel-倒装句', 'rel-疑问句', 'rel-反问句'],
         };
 
         function toggleRelHl(btn) {
@@ -3546,7 +3548,7 @@
             });
             if (wordClassSelected) matched.push('词类活用');
 
-            const sentenceSelected = ['省略句', '判断句', '让步句式', '被动句', '倒装句'].some(function(name) {
+            const sentenceSelected = ['省略句', '判断句', '让步句式', '被动句', '倒装句', '疑问句', '反问句'].some(function(name) {
                 return active.includes('rel-' + name) && relationMatches(allRelations, name);
             });
             if (sentenceSelected) matched.push('句式');
