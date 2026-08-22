@@ -1041,6 +1041,28 @@
             color: #94a3b8;
             margin-bottom: 24px;
         }
+        #loginBox .login-mode-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        #loginBox .login-mode-btn {
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 8px;
+            background: #f8fafc;
+            color: #64748b;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+        }
+        #loginBox .login-mode-btn.active {
+            color: #fff;
+            background: #1e293b;
+            border-color: #1e293b;
+        }
+        #teacherLoginFields { display: none; }
         #loginBox input,
         #loginBox select {
             width: 100%;
@@ -1200,13 +1222,22 @@
         <div id="loginBox">
             <div class="login-title">📖 古代汉语知识图谱</div>
             <div class="login-sub">请填写信息后进入</div>
-            <input type="text" id="inputName" placeholder="请输入姓名（必填）" autocomplete="off" />
-            <input type="text" id="inputId" placeholder="请输入学号（必填）" autocomplete="off" />
-            <select id="inputClass" aria-label="请选择班级">
-                <option value="">请选择班级（必填）</option>
-                <option value="班级1">班级1</option>
-                <option value="班级2">班级2</option>
-            </select>
+            <div class="login-mode-tabs">
+                <button type="button" id="studentModeBtn" class="login-mode-btn active" onclick="setLoginMode('student')">学生登录</button>
+                <button type="button" id="teacherModeBtn" class="login-mode-btn" onclick="setLoginMode('teacher')">教师入口</button>
+            </div>
+            <div id="studentLoginFields">
+                <select id="inputClass" aria-label="请选择班级">
+                    <option value="">请选择班级（必填）</option>
+                    <option value="25级汉教1班">25级汉教1班</option>
+                    <option value="25级汉教2班">25级汉教2班</option>
+                    <option value="25级汉教3班">25级汉教3班</option>
+                </select>
+                <input type="text" id="inputId" placeholder="请输入15位学号（必填）" autocomplete="off" inputmode="numeric" maxlength="15" />
+            </div>
+            <div id="teacherLoginFields">
+                <input type="password" id="inputTeacherPassword" placeholder="请输入教师密码" autocomplete="current-password" />
+            </div>
             <button class="login-btn" onclick="doLogin()">进入知识图谱</button>
             <div class="login-err" id="loginErr"></div>
         </div>
@@ -2510,6 +2541,7 @@
 
         document.getElementById('closePanel').addEventListener('click', function() {
             document.getElementById('detailPanel').classList.remove('open');
+            clearDwellFocus();
         });
 
         const CAT_COLORS = { '实词': '#3b82f6', '虚词': '#f59e0b', '叹词': '#06b6d4', '固定格式': '#8b5cf6', '句式': '#10b981', '文化': '#ef4444' };
@@ -2940,9 +2972,13 @@
 
         document.getElementById('closeModal').addEventListener('click', function() {
             document.getElementById('crossModal').classList.remove('open');
+            clearDwellFocus();
         });
         document.getElementById('crossModal').addEventListener('click', function(e) {
-            if (e.target === this) this.classList.remove('open');
+            if (e.target === this) {
+                this.classList.remove('open');
+                clearDwellFocus();
+            }
         });
 
         // ===== 搜索功能（优化排序 + 显示篇目） =====
@@ -3118,16 +3154,16 @@
 
 
         // ============================================================
-        // 追踪系统 & 登录逻辑（新表单17项正式版）
+        // 追踪系统 & 登录逻辑（新表单19项正式版）
         // ============================================================
         const FORM_BASE = 'https://docs.google.com/forms/d/e/1FAIpQLSf0eYr1g3pObZpUakNI5rIb37aO6uzJxniekZ-tv0i2euZd0w/formResponse';
-        // 新表单为单页表单。测试环境只生成17项预览；仅 github.io 正式网页提交。
+        // 新表单为单页表单。测试环境只生成19项预览；仅 github.io 正式网页提交。
         const FORM_EXTRA_FIELDS = {
             fvv: '1',
             draftResponse: '[]',
             pageHistory: '0'
         };
-        // entry 编号严格按照用户提供的预填链接顺序对应17个问题。
+        // entry 编号严格按照用户提供的预填链接顺序对应19个问题。
         const ENTRY = {
             classname:               'entry.891985639',
             name:                    'entry.1115800212',
@@ -3141,11 +3177,13 @@
             crossLectureUnique:      'entry.875677297',
             lessonDistribution:      'entry.666094109',
             overallTop10:            'entry.597480083',
+            dwellTop10:              'entry.184053821',
             statusTop10:             'entry.1024582454',
             crossTop10:              'entry.2120574130',
             crossLectureTop10:       'entry.2133013974',
             searchUniqueCount:       'entry.1116517432',
-            searchTop10:             'entry.936590592'
+            searchTop10:             'entry.936590592',
+            learningPath:            'entry.1523759143'
         };
 
         // 只有部署到 GitHub Pages 的正式网页才提交 Google 表单。
@@ -3153,10 +3191,87 @@
         const IS_OFFICIAL_GITHUB = /(^|\.)github\.io$/i.test(window.location.hostname);
         const IDLE_LIMIT_MS = 5 * 60 * 1000;
 
+        // 学生名单来自教师核对后的Excel。学生只输入班级与学号；姓名由名单自动带出。
+        const STUDENT_ROSTER = {
+            '25级汉教1班': {
+                '282025200000126': '黎秋霞',
+                '282025200000140': '阮芳英',
+                '282025200000085': '黄簪英',
+                '282025200000145': '高勇',
+                '282025200000113': '陈庆玲',
+                '282025200000147': '阮玉兰',
+                '282025200000093': '阮芳英',
+                '282025200000100': '阮氏香江',
+                '282025200000115': '阮氏玲',
+                '282025200000114': '阮桥微',
+                '282025200000129': '阮国维',
+                '282025200000072': '阮兰香',
+                '282025200000116': '西诺',
+                '282025200000111': '蔡卓宜',
+                '282025200000061': '范芳娥',
+                '282025200000123': '范淡秋河',
+                '282025200000090': '白诗岚',
+                '282025200000205': '吴东朋',
+                '282025200000120': '吴婧玲',
+                '282025200000063': '段氏芳原',
+                '282025200000092': '排落妍',
+                '282025200000137': '刘爱神',
+                '282025200000054': '李琪心',
+                '282025200000156': '丽娜',
+                '282025200000124': '杜妙玲'
+            },
+            '25级汉教2班': {
+                '282025200000099': '黎芳梅',
+                '282025200000086': '黎祥诗',
+                '282025200000082': '陈美娟',
+                '282025200000096': '陈淑惠',
+                '282025200000058': '陈氏明妆',
+                '282025200000169': '阮氏顺化',
+                '282025200000077': '阮氏芳微',
+                '282025200000094': '阮氏玉映',
+                '282025200000069': '阮氏垂玲',
+                '282025200000171': '阮垂玲',
+                '282025200000101': '郑陈庆银',
+                '282025200000127': '邓思可',
+                '282025200000128': '郑丽仙',
+                '282025200000119': '谢美花',
+                '282025200000138': '赵芳',
+                '282025200000150': '艾乐扬',
+                '282025200000204': '王兰露',
+                '282025200000151': '洛聿为',
+                '282025200000110': '河氏芳草',
+                '282025200000206': '林月欣',
+                '282025200000089': '朱明月',
+                '282025200000142': '李依然',
+                '282025200000143': '夏明斌',
+                '282025200000097': '叶语芙',
+                '282025200000057': '何玉莲',
+                '282024200000121': '匡家洛'
+            },
+            '25级汉教3班': {
+                '282025200000078': '黄氏芳英',
+                '282025200000108': '韩乐言',
+                '282025200000080': '鲁静怡',
+                '282025200000068': '阮芳英',
+                '282025200000104': '阮氏如意',
+                '282025200000075': '范燕玲',
+                '282025200000139': '艾力山',
+                '282025200000070': '程彩凤',
+                '282025200000122': '王梦琪',
+                '282025200000118': '武氏燕',
+                '282025200000083': '杨蕊蕊',
+                '282025200000066': '杨治华',
+                '282025200000132': '周奕圆',
+                '282025200000098': '匡家桐'
+            }
+        };
+
         // 用户信息
         let _userName = '';
         let _userId = '';
         let _userClass = '';
+        let _loginMode = 'student';
+        let _isTeacher = false;
         let _sessionStart = null;
         let _submitted = false;
         let _allowUnload = false;
@@ -3166,6 +3281,10 @@
         let _activeMs = 0;
         let _lastTickAt = 0;
         let _lastActivityAt = 0;
+        let _lastDwellTickAt = 0;
+        let _dwellCurrentKey = '';
+        const _dwellMap = new Map();
+        const _dwellDisplay = new Map();
 
         const CATEGORY_ORDER = ['实词', '虚词', '叹词', '固定格式', '句式', '文化'];
         const STATUS_ORDER = ['稳定', '频率下降', '受限'];
@@ -3185,6 +3304,29 @@
         // “搜索功能使用次数”按通过搜索打开的独立知识点数量统计，由 _searchUnique 去重。
         const _clickEvents = [];
 
+        function updateDwellTime(now) {
+            if (!_sessionStart) return;
+            const current = now || Date.now();
+            if (!_lastDwellTickAt) _lastDwellTickAt = current;
+            const delta = Math.max(0, Math.min(current - _lastDwellTickAt, 2000));
+            if (_dwellCurrentKey && document.visibilityState === 'visible' && current - _lastActivityAt <= IDLE_LIMIT_MS) {
+                _dwellMap.set(_dwellCurrentKey, (_dwellMap.get(_dwellCurrentKey) || 0) + delta);
+            }
+            _lastDwellTickAt = current;
+        }
+
+        function focusDwellOnNode(node) {
+            updateDwellTime();
+            const key = getKnowledgeKey(node);
+            _dwellCurrentKey = key || '';
+            if (key) _dwellDisplay.set(key, getKnowledgeDisplay(node));
+        }
+
+        function clearDwellFocus() {
+            updateDwellTime();
+            _dwellCurrentKey = '';
+        }
+
         function updateActiveTime(now) {
             if (!_sessionStart) return;
             const current = now || Date.now();
@@ -3201,6 +3343,7 @@
             if (!_sessionStart) return;
             const now = Date.now();
             updateActiveTime(now);
+            updateDwellTime(now);
             _lastActivityAt = now;
         }
 
@@ -3210,40 +3353,75 @@
         document.addEventListener('scroll', markActivity, { passive: true, capture: true });
         document.addEventListener('visibilitychange', function() {
             updateActiveTime();
+            updateDwellTime();
             _lastTickAt = Date.now();
+            _lastDwellTickAt = Date.now();
             if (document.visibilityState === 'visible') _lastActivityAt = Date.now();
         });
-        setInterval(function() { updateActiveTime(); }, 1000);
+        setInterval(function() {
+            const now = Date.now();
+            updateActiveTime(now);
+            updateDwellTime(now);
+        }, 1000);
 
         // 登录
+        function setLoginMode(mode) {
+            _loginMode = mode === 'teacher' ? 'teacher' : 'student';
+            document.getElementById('studentLoginFields').style.display = _loginMode === 'student' ? 'block' : 'none';
+            document.getElementById('teacherLoginFields').style.display = _loginMode === 'teacher' ? 'block' : 'none';
+            document.getElementById('studentModeBtn').classList.toggle('active', _loginMode === 'student');
+            document.getElementById('teacherModeBtn').classList.toggle('active', _loginMode === 'teacher');
+            document.getElementById('loginErr').textContent = '';
+        }
+
         function doLogin() {
-            const name = document.getElementById('inputName').value.trim();
-            const sid = document.getElementById('inputId').value.trim();
-            const cls = document.getElementById('inputClass').value.trim();
-            if (!name) {
-                document.getElementById('loginErr').textContent = '请输入姓名';
-                return;
+            if (_loginMode === 'teacher') {
+                const password = document.getElementById('inputTeacherPassword').value;
+                if (password !== '2026') {
+                    document.getElementById('loginErr').textContent = '教师密码错误';
+                    return;
+                }
+                _isTeacher = true;
+                _userName = '教师';
+                _userId = '';
+                _userClass = '教师端';
+            } else {
+                const sid = document.getElementById('inputId').value.trim();
+                const cls = document.getElementById('inputClass').value.trim();
+                if (!cls) {
+                    document.getElementById('loginErr').textContent = '请输入班级';
+                    return;
+                }
+                if (!sid) {
+                    document.getElementById('loginErr').textContent = '请输入学号';
+                    return;
+                }
+                if (!/^\d{15}$/.test(sid)) {
+                    document.getElementById('loginErr').textContent = '请输入正确的15位学号';
+                    return;
+                }
+                const expectedName = STUDENT_ROSTER[cls] && STUDENT_ROSTER[cls][sid];
+                if (!expectedName) {
+                    document.getElementById('loginErr').textContent = '该学号不属于所选班级，请检查后重试';
+                    return;
+                }
+                _userName = expectedName;
+                _userId = sid;
+                _userClass = cls;
+                _isTeacher = false;
             }
-            if (!sid) {
-                document.getElementById('loginErr').textContent = '请输入学号';
-                return;
-            }
-            if (!cls) {
-                document.getElementById('loginErr').textContent = '请输入班级';
-                return;
-            }
-            _userName = name;
-            _userId = sid;
-            _userClass = cls;
             _sessionStart = Date.now();
             _lastTickAt = _sessionStart;
+            _lastDwellTickAt = _sessionStart;
             _lastActivityAt = _sessionStart;
             _submitted = false;
             _allowUnload = false;
             _leaveAttempted = false;
             document.getElementById('loginOverlay').style.display = 'none';
             const tag = document.getElementById('userTag');
-            tag.textContent = '👤 ' + name + '｜' + cls + (IS_OFFICIAL_GITHUB ? '' : '｜🧪测试');
+            tag.textContent = _isTeacher
+                ? '👩‍🏫 教师端'
+                : '👤 ' + _userName + '｜' + _userClass + (IS_OFFICIAL_GITHUB ? '' : '｜🧪测试');
             tag.style.display = 'inline-block';
             document.getElementById('endBtn').style.display = 'inline-block';
         }
@@ -3446,6 +3624,7 @@
         function trackNodeClick(node, source) {
             if (!_sessionStart || !node || node.isTextCenter || node.isBlock) return;
             markActivity();
+            focusDwellOnNode(node);
 
             const nodesForContext = [node];
             const statuses = getMatchedSelectedStatuses(nodesForContext);
@@ -3506,6 +3685,7 @@
             const relatedNodes = resolveCrossLectureNodes(label, edge);
             const node = relatedNodes[0];
             if (!node) return;
+            focusDwellOnNode(node);
 
             const statuses = getMatchedSelectedStatuses(relatedNodes);
             const relations = getMatchedSelectedRelationGroups(relatedNodes);
@@ -3622,6 +3802,48 @@
             return formatTop(sortedTop(countMap(events, function(event) { return event.display; }), 10));
         }
 
+        function formatDwell(ms) {
+            const seconds = Math.max(1, Math.round(ms / 1000));
+            const minutes = Math.floor(seconds / 60);
+            const rest = seconds % 60;
+            if (minutes && rest) return minutes + '分' + rest + '秒';
+            if (minutes) return minutes + '分';
+            return rest + '秒';
+        }
+
+        function buildDwellTop10() {
+            updateDwellTime();
+            const entries = Array.from(_dwellMap.entries())
+                .filter(function(item) { return item[1] > 0; })
+                .sort(function(a, b) {
+                    if (b[1] !== a[1]) return b[1] - a[1];
+                    return String(_dwellDisplay.get(a[0]) || a[0]).localeCompare(String(_dwellDisplay.get(b[0]) || b[0]), 'zh-CN');
+                })
+                .slice(0, 10);
+            return entries.length
+                ? entries.map(function(item) { return (_dwellDisplay.get(item[0]) || item[0]) + '（' + formatDwell(item[1]) + '）'; }).join('；')
+                : '无';
+        }
+
+        function buildLearningPath() {
+            const limit = 50;
+            const visible = _clickEvents.slice(0, limit);
+            if (!visible.length) return '无';
+            const groups = [];
+            visible.forEach(function(event) {
+                const label = event.display + '〔' + event.context + '〕';
+                const last = groups[groups.length - 1];
+                if (last && last.label === label) last.count += 1;
+                else groups.push({ label: label, count: 1 });
+            });
+            let result = groups.map(function(group) {
+                return group.label + (group.count > 1 ? '×' + group.count : '');
+            }).join(' → ');
+            const extra = _clickEvents.length - limit;
+            if (extra > 0) result += '；+' + extra;
+            return result;
+        }
+
         function buildLessonDistribution() {
             return formatUniqueDistribution(allLessonNames, _lessonUnique);
         }
@@ -3646,11 +3868,13 @@
                 crossLectureUnique: _crossLectureUnique.size,
                 lessonDistribution: buildLessonDistribution(),
                 overallTop10: buildOverallTop10(),
+                dwellTop10: buildDwellTop10(),
                 statusTop10: buildStatusTop10(),
                 crossTop10: buildCrossTop10(),
                 crossLectureTop10: buildCrossLectureTop10(),
                 searchUniqueCount: _searchUnique.size,
-                searchTop10: buildSearchTop10()
+                searchTop10: buildSearchTop10(),
+                learningPath: buildLearningPath()
             };
         }
 
@@ -3781,10 +4005,10 @@
                 + '</div>';
         }
 
-        // 本地测试报告严格按照新Google表单17项顺序展示，但不会发出任何提交请求。
+        // 本地测试与教师端报告严格按照新Google表单19项顺序展示。
         function buildTestDisplay(record) {
             return ''
-                + '<div class="test-report-note">🧪 当前为本地测试模式：以下17项仅供逐项核对，绝不会写入 Google 表单。</div>'
+                + '<div class="test-report-note">' + (_isTeacher ? '👩‍🏫 教师端：以下19项仅供查看，不会写入 Google 表单。' : '🧪 当前为本地测试模式：以下19项仅供逐项核对，绝不会写入 Google 表单。') + '</div>'
                 + '<div class="test-report-section"><h3>一、学生信息与总体情况（1—5）</h3><div class="test-report-grid">'
                 + reportField('1. 班级', record.classname)
                 + reportField('2. 姓名', record.name)
@@ -3802,17 +4026,19 @@
                 + '</div>'
                 + reportLongField('11. 篇目学习分布（独立知识点数）', record.lessonDistribution)
                 + '</div>'
-                + '<div class="test-report-section"><h3>三、点击次数TOP10（12—15）</h3>'
+                + '<div class="test-report-section"><h3>三、点击与停留TOP10（12—16）</h3>'
                 + reportLongField('12. 全部知识点点击次数TOP10', record.overallTop10)
-                + reportLongField('13. 文中功能现状下点击次数TOP10', record.statusTop10)
-                + reportLongField('14. 跨课关联下点击次数TOP10', record.crossTop10)
-                + reportLongField('15. 跨课关联讲解点击次数TOP10', record.crossLectureTop10)
+                + reportLongField('13. 知识点停留时长TOP10', record.dwellTop10)
+                + reportLongField('14. 文中功能现状下点击次数TOP10', record.statusTop10)
+                + reportLongField('15. 跨课关联下点击次数TOP10', record.crossTop10)
+                + reportLongField('16. 跨课关联讲解点击次数TOP10', record.crossLectureTop10)
                 + '</div>'
-                + '<div class="test-report-section"><h3>四、搜索行为（16—17）</h3>'
+                + '<div class="test-report-section"><h3>四、搜索与学习路径（17—19）</h3>'
                 + '<div class="test-report-grid">'
-                + reportField('16. 搜索功能使用次数', record.searchUniqueCount)
+                + reportField('17. 搜索功能使用次数', record.searchUniqueCount)
                 + '</div>'
-                + reportLongField('17. 搜索打开知识点TOP10', record.searchTop10)
+                + reportLongField('18. 搜索打开知识点TOP10', record.searchTop10)
+                + reportLongField('19. 学习路径（前50个有效行为）', record.learningPath)
                 + '</div>';
         }
 
@@ -3820,7 +4046,7 @@
             if (!_sessionStart || !_userName) return { ok: false, reason: 'not-logged-in' };
             const record = buildRecord();
 
-            if (!IS_OFFICIAL_GITHUB) {
+            if (!IS_OFFICIAL_GITHUB || _isTeacher) {
                 console.group('🧪 知识图谱测试数据（未提交）');
                 console.table(record);
                 console.groupEnd();
@@ -3846,9 +4072,10 @@
                 + '</div>';
         }
 
-        // 正式学生端只显示有效学习时长；本地测试端显示17项完整预览。
+        // 正式学生端只显示有效学习时长；本地测试端和教师端显示19项完整预览。
         function showEndOverlay() {
             if (!_sessionStart || !_userName) return;
+            clearDwellFocus();
             const record = buildRecord();
             const box = document.getElementById('endBox');
             const info = document.getElementById('endInfo');
@@ -3858,7 +4085,7 @@
             const cancelButton = document.getElementById('endCancelBtn');
 
             cancelButton.style.display = 'block';
-            if (IS_OFFICIAL_GITHUB) {
+            if (IS_OFFICIAL_GITHUB && !_isTeacher) {
                 box.classList.remove('test-report');
                 icon.textContent = '📊';
                 title.textContent = '结束学习';
@@ -3870,7 +4097,7 @@
                 icon.textContent = '🧪';
                 title.textContent = '本次测试数据预览';
                 info.innerHTML = buildTestDisplay(record);
-                submitButton.textContent = '结束本次测试（不提交）';
+                submitButton.textContent = _isTeacher ? '结束教师预览' : '结束本次测试（不提交）';
                 cancelButton.textContent = '返回继续测试';
             }
 
@@ -3897,18 +4124,18 @@
             const button = document.getElementById('endSubmitBtn');
             const done = document.getElementById('endDone');
             button.disabled = true;
-            button.textContent = IS_OFFICIAL_GITHUB ? '正在提交…' : '正在生成测试记录…';
+            button.textContent = IS_OFFICIAL_GITHUB && !_isTeacher ? '正在提交…' : '正在生成测试记录…';
 
             const result = await submitData();
             if (!result || !result.ok) {
                 button.disabled = false;
-                button.textContent = IS_OFFICIAL_GITHUB ? '提交失败，请重试' : '生成失败，请重试';
+                button.textContent = IS_OFFICIAL_GITHUB && !_isTeacher ? '提交失败，请重试' : '生成失败，请重试';
                 return;
             }
 
             if (result.test) {
                 document.getElementById('endInfo').innerHTML = buildTestDisplay(result.record);
-                done.textContent = '🧪 测试数据已生成，未写入 Google 表单。';
+                done.textContent = _isTeacher ? '👩‍🏫 教师端预览已生成，未写入 Google 表单。' : '🧪 测试数据已生成，未写入 Google 表单。';
                 done.style.display = 'block';
                 button.style.display = 'none';
                 return;
@@ -3926,7 +4153,7 @@
         // 浏览器标签页右侧“×”属于浏览器界面，网页无法直接拦截并显示自定义弹窗。
         // 可实现的方式是：先触发浏览器原生“是否离开”提示；若学生取消关闭，则立即显示本网页的结束学习弹窗。
         window.addEventListener('beforeunload', function(e) {
-            if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            if (!IS_OFFICIAL_GITHUB || _isTeacher || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             updateActiveTime();
             _leaveAttempted = true;
             // 如果学生选择“取消离开”，该自定义弹窗会留在页面上。
@@ -3939,7 +4166,7 @@
 
         // 某些浏览器在取消关闭后才重新获得焦点，这里再次确保结束学习弹窗可见。
         function showEndOverlayAfterCancelledClose() {
-            if (!_leaveAttempted || !IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            if (!_leaveAttempted || !IS_OFFICIAL_GITHUB || _isTeacher || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             _leaveAttempted = false;
             setTimeout(function() {
                 if (document.visibilityState === 'visible') showEndOverlay();
@@ -3953,7 +4180,7 @@
         // 学生确认关闭标签页、关闭整个浏览器或跳转离开正式网页时，尽最大可能提交当前记录。
         // sendBeacon 专用于页面卸载时发送少量数据；失败时再使用 keepalive fetch 兜底。
         function submitRecordOnPageExit() {
-            if (!IS_OFFICIAL_GITHUB || !_sessionStart || !_userName || _submitted || _allowUnload) return;
+            if (!IS_OFFICIAL_GITHUB || _isTeacher || !_sessionStart || !_userName || _submitted || _allowUnload) return;
             updateActiveTime();
             const record = buildRecord();
             const params = buildParams(record);
